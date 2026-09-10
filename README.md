@@ -1,5 +1,10 @@
 # Science English
 
+[![CI](https://github.com/cometrue171/paper-vocab-trainer/actions/workflows/ci.yml/badge.svg)](https://github.com/cometrue171/paper-vocab-trainer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
+[![Dependencies: Flask + SQLite + pypdf](https://img.shields.io/badge/deps-Flask%20%7C%20SQLite%20%7C%20pypdf-informational.svg)](pyproject.toml)
+
 **Turn your research papers into a personal vocabulary trainer.**
 
 Science English reads academic papers in *your* field, mines the words you actually need,
@@ -36,6 +41,36 @@ domain (environmental science, agriculture, food systems, applied linguistics, �
   Each account has its own papers, word pool, contexts, progress and settings (hard isolation).
 - **Web app + Android shell** – plain Flask + SQLite server, mobile-first UI, optional Capacitor
   Android wrapper (WebView shell) for a home-screen app.
+
+## What a card looks like
+
+```
+┌──────────────────────────────────────┐
+│  eutrophication            D0 · 磷领域 │
+│  🇬🇧 英音    🇺🇸 美音                   │
+│                                      │
+│  /juːˌtrɒfɪˈkeɪʃn/  富营养化           │
+│                                      │
+│  "…nutrient runoff accelerates        │
+│   eutrophication of downstream        │
+│   lakes and coastal waters."          │
+│   —— Journal of Cleaner Production    │
+│                                      │
+│  忘记        模糊        记得          │
+└──────────────────────────────────────┘
+```
+
+Every word is shown with **IPA**, **one-tap UK/US audio**, a **Chinese gloss** and one or two
+**sentences taken from the paper it came from** — so you rehearse the word in the exact context
+you will meet it again.
+
+## Where it fits
+
+Reads-heavy research fields where the literature is English but the reader is not a native
+speaker — environmental science / phosphorus & nutrient cycles, agriculture and food systems,
+applied linguistics and language teaching, and any lab that maintains its own paper corpus.
+It is deliberately **self-hostable, offline-first for the dictionary, and dependency-light**,
+so a single lab or a single researcher can run it on a small VPS or a laptop.
 
 ## Quick start
 
@@ -96,6 +131,14 @@ and you can add your own by dropping a `data/seed_<domain>.tsv` (`word<TAB>中�
 `deploy/` contains generic templates: a `systemd` unit and an nginx reverse-proxy snippet
 (placeholders only — adjust paths, user and port). Deploy behind HTTPS and keep the
 application's own login as the access control.
+
+## Roadmap
+
+- [ ] Web UI to import a paper by DOI (today: `manage.py` or the admin API)
+- [ ] Optional PDF text layers for paywalled papers uploaded by the user
+- [ ] Seed lists for more domains (contributions welcome — see `data/seed_*.tsv`)
+- [ ] Export/import the word pool (Anki-compatible)
+- [ ] Android wrapper build instructions
 
 ## License
 

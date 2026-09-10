@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync
+      - name: Byte-compile
+        run: uv run python -m compileall -q app.py manage.py lib
+      - name: Init database (skip dictionary download)
+        run: uv run manage.py init --no-dict
+        env:
+          SEED_ADMIN_PASSWORD: test-admin-pw
+      - name: Smoke tests
+        run: uv run pytest -q
