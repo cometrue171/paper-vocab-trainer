@@ -40,7 +40,7 @@ domain (environmental science, agriculture, food systems, applied linguistics, â
 ## Quick start
 
 ```bash
-git clone https://github.com/<you>/science-english && cd science-english
+git clone https://github.com/cometrue171/paper-vocab-trainer && cd paper-vocab-trainer
 uv run manage.py init          # create DB, download & import ECDICT dictionary (~150MB once)
 uv run manage.py serve         # http://127.0.0.1:5010
 ```
