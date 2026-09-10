@@ -257,20 +257,31 @@ def migrate_legacy(conn: sqlite3.Connection) -> None:
 # --------------------------------------------------------------------------- #
 # users
 # --------------------------------------------------------------------------- #
-ADMIN_USERNAME = "english"
-ADMIN_PASSWORD = "j26U9FTTcUF6"          # 沿用旧 nginx 凭据，作管理员
-ADMIN_DIRECTION = "磷足迹/全生命周期(环境工程)"
-TEACHER_DIRECTION = "英语/英语教学"
+ADMIN_USERNAME = "admin"
+ADMIN_DIRECTION = "General / 综合"
 
 
 def ensure_seed_admin(conn: sqlite3.Connection) -> None:
-    if not conn.execute("SELECT 1 FROM users WHERE id=1").fetchone():
-        conn.execute(
-            "INSERT INTO users(id,username,password_hash,is_admin,direction,note) "
-            "VALUES(?,?,?,1,?,'系统管理员（原有账号数据归其所有）')",
-            (1, ADMIN_USERNAME,
-             generate_password_hash(ADMIN_PASSWORD), ADMIN_DIRECTION))
-        conn.commit()
+    """Create the first admin account once.
+
+    The password comes from SEED_ADMIN_PASSWORD; otherwise a random one is
+    generated and printed, so no credential is ever baked into the source.
+    """
+    if conn.execute("SELECT 1 FROM users WHERE id=1").fetchone():
+        return
+    import secrets
+    import sys
+    pwd = os.environ.get("SEED_ADMIN_PASSWORD") or secrets.token_urlsafe(9)
+    conn.execute(
+        "INSERT INTO users(id,username,password_hash,is_admin,direction,note) "
+        "VALUES(?,?,?,1,?,'system administrator')",
+        (1, ADMIN_USERNAME, generate_password_hash(pwd), ADMIN_DIRECTION))
+    conn.commit()
+    if not os.environ.get("SEED_ADMIN_PASSWORD"):
+        print(f"[init] created admin account '{ADMIN_USERNAME}' "
+              f"with password: {pwd}\n"
+              f"       change it after logging in, or set SEED_ADMIN_PASSWORD.",
+              file=sys.stderr)
 
 
 def user_row(conn: sqlite3.Connection, username: str | None = None,
