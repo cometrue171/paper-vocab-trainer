@@ -79,6 +79,21 @@ class CanonMapper:
         return w
 
 
+def tier_for(lemma: str, tags: set[str], is_domain: bool,
+             skip_tags: set[str]) -> str | None:
+    """Return 'D0'/'D1'/'D2' or None when the word should be skipped.
+
+    `skip_tags` is the account's difficulty floor: anything tagged with a band
+    at or below that floor counts as already known (typo/grade/school words).
+    """
+    if tags & skip_tags:
+        return None
+    if is_domain:
+        return "D0"
+    # 任何未被跳过的考试词（六级/考研/雅思托福/GRE，或入门档下的高考/四级词）都算学术高频
+    return "D1" if tags else "D2"
+
+
 def prepare(conn: sqlite3.Connection, seed_file: str | Path | None = None):
     """Build (mapper, domain_gloss) once per account & direction."""
     gloss = load_domain_seed(seed_file)
@@ -123,12 +138,10 @@ def harvest_paper(conn: sqlite3.Connection, account_id: int, paper_id: int,
         if lem in gloss_mod.GLUE_WORDS or len(lem) < 3:
             continue
         row = gloss_mod.lookup(conn, lem)
-        # 目标难度档：低于该档（含领域基础词）视为已知，不收集
-        if row and (gloss_mod.tag_set(row) & skip_tags):
-            continue
         is_domain = lem in domain
-        cls = "D0" if is_domain else gloss_mod.classify(lem, row)
-        if cls == "base":
+        cls = tier_for(lem, gloss_mod.tag_set(row) if row else set(),
+                       is_domain, skip_tags)
+        if cls is None:
             continue
         if cls == "D2" and occ < 2:
             continue

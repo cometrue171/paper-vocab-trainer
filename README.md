@@ -164,9 +164,17 @@ depends on an API key.
 
 ### Difficulty target
 
-Per account: treat “CET-4 and below” / “CET-6 and below” / “postgraduate-entrance and below”
-as already known, so the queue only surfaces harder words (Settings → 目标词汇难度; re-screen an
-existing pool with `manage.py level --account <user> --level cet6`).
+Per account, pick how much counts as “already known”, so the queue surfaces only harder words:
+
+| Level | Skipped (treated as known) | Learned |
+|---|---|---|
+| `zk` — entry | junior-high basics only | high-school, CET-4, CET-6, 考研, IELTS/TOEFL/GRE, academic |
+| `cet4` — standard (default) | high-school … CET-4 | CET-6, 考研, IELTS/TOEFL/GRE, academic |
+| `cet6` — raised | … CET-6 | 考研, IELTS/TOEFL/GRE, academic |
+| `ky` — advanced | … 考研 | IELTS/TOEFL/GRE, academic |
+
+Set it in Settings → 目标词汇难度, and re-screen an existing pool with
+`manage.py level --account <user> --level zk|cet4|cet6|ky`.
 
 ## How it works
 

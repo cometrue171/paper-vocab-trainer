@@ -160,7 +160,7 @@ def cmd_level(args: argparse.Namespace) -> int:
     """按账号目标难度档重筛：低于该档的词标记为已认识（从学习队列移除）。"""
     conn = connect()
     account = resolve_account(conn, args.account)
-    level = args.level if args.level in ("cet4", "cet6", "ky") else "cet6"
+    level = args.level if args.level in ("zk", "cet4", "cet6", "ky") else "cet6"
     set_setting(conn, account, "min_level", level)
     extra = gloss.extra_tags(level)
     rows = conn.execute(
@@ -226,7 +226,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("ipa")
     lv = sub.add_parser("level", help="按目标难度档重筛某账号词库")
     add_account_arg(lv)
-    lv.add_argument("--level", choices=["cet4", "cet6", "ky"], default="cet6")
+    lv.add_argument("--level", choices=["zk", "cet4", "cet6", "ky"], default="cet6")
     s = sub.add_parser("serve")
     s.add_argument("--port", type=int, default=0)
     s.add_argument("--debug", action="store_true")

@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>设置 · Science English</title>
-<link rel="stylesheet" href="static/app.css?v=8">
+<link rel="stylesheet" href="static/app.css?v=10">
 </head>
 <body>
 <div class="top">
@@ -24,8 +24,18 @@
       <div><label class="lab">网页端口(重启生效)</label><input type="number" id="port" min="1000" max="65535"></div>
     </div>
     <div class="row mt8" style="align-items:center">
+      <label class="lab" style="flex:none">答完自动朗读：</label>
+      <select id="auto_speak" style="max-width:200px">
+        <option value="1">开（点认识/不认识后自动发音）</option>
+        <option value="0">关</option>
+      </select>
+      <label class="lab" style="flex:none;margin-left:12px">每组重复次数：</label>
+      <input type="number" id="repeat_per_session" min="1" max="10" style="max-width:90px">
+    </div>
+    <div class="row mt8" style="align-items:center">
       <label class="lab" style="flex:none">目标词汇难度：</label>
-      <select id="min_level" style="max-width:300px">
+      <select id="min_level" style="max-width:320px">
+        <option value="zk">入门（只跳过中考基础词，高考/四级词也学）</option>
         <option value="cet4">标准（四级以下跳过，六级/考研/雅思托福学习）</option>
         <option value="cet6">提升（六级及以下视为已认识，学考研/雅思托福/GRE + 学术词）</option>
         <option value="ky">高阶（考研及以下视为已认识，只学雅思托福/GRE 及学术词）</option>
@@ -43,17 +53,6 @@
       <div><label class="lab">API Key（只存本机数据库）</label><input type="password" id="trans_key" placeholder="sk-…"></div>
     </div>
     <div class="note mt8">填写后，句子练习页会出现“查看参考译文”按钮。Key 保存在服务器的 SQLite 里。</div>
-  </div>
-  <div class="card mt">
-    <h2>🤖 AI 检索（可选）</h2>
-    <div class="grid">
-      <div><label class="lab">API Base URL</label><input type="text" id="llm_base_url" placeholder="https://api.openai.com/v1"></div>
-      <div><label class="lab">API Key</label><input type="password" id="llm_api_key" placeholder="sk-…"></div>
-      <div><label class="lab">Model</label><input type="text" id="llm_model" placeholder="gpt-4o-mini"></div>
-    </div>
-    <div class="note mt8">填入任意 OpenAI 兼容接口的 Key 后，「文献库」页的 <b>AI 检索并入库</b> 就能：
-      根据你填写的领域关键词自动生成一组学术检索词（含同义/近义表达）+ 推荐该领域期刊名，然后自动抓取入库。
-      不填 Key 时该按钮退化为“用你填的关键词直接抓取”。Key 只保存在本机数据库。</div>
   </div>
   <div class="card mt">
     <h2>文献抓取</h2>
@@ -75,18 +74,18 @@
   <div class="card mt">
     <h2>命令速查（在服务器上执行）</h2>
     <table>
-      <tr><td>服务状态</td><td class="mono">sudo systemctl status science-english</td></tr>
-      <tr><td>抓取文献</td><td class="mono">cd /opt/science-english && .venv/bin/python manage.py fetch && sudo .venv/bin/python manage.py extract</td></tr>
-      <tr><td>下载开放全文</td><td class="mono">cd /opt/science-english && .venv/bin/python manage.py oa</td></tr>
-      <tr><td>词库概况</td><td class="mono">cd /opt/science-english && .venv/bin/python manage.py status</td></tr>
+      <tr><td>服务状态</td><td class="mono">sudo systemctl status phosphorus-english</td></tr>
+      <tr><td>抓取文献</td><td class="mono">cd /opt/phosphorus-english && sudo .venv/bin/python manage.py fetch && sudo .venv/bin/python manage.py extract</td></tr>
+      <tr><td>下载开放全文</td><td class="mono">cd /opt/phosphorus-english && sudo .venv/bin/python manage.py oa</td></tr>
+      <tr><td>词库概况</td><td class="mono">cd /opt/phosphorus-english && sudo .venv/bin/python manage.py status</td></tr>
     </table>
   </div>
 </div>
 <nav class="nav bnav"></nav>
-<script src="static/app.js?v=8"></script>
+<script src="static/app.js?v=10"></script>
 <script>
 navBar('settings.html');
-const KEYS = ['daily_new', 'review_cap', 'daily_sent', 'port', 'trans_provider', 'trans_key', 'seed_terms', 'min_level', 'llm_base_url', 'llm_api_key', 'llm_model'];
+const KEYS = ['daily_new', 'review_cap', 'daily_sent', 'port', 'trans_provider', 'trans_key', 'seed_terms', 'min_level', 'auto_speak', 'repeat_per_session', 'llm_base_url', 'llm_api_key', 'llm_model'];
 async function load() {
   const s = await api('/api/settings');
   for (const k of KEYS) document.getElementById(k).value = s[k] || '';
@@ -100,7 +99,7 @@ async function save() {
 }
 /* 下载安装：App 内用原生 appup://（自动下载并拉起安装器），浏览器直接走链接 */
 function installInApp() {
-  const u = new URL(href('/api/app/apk'), location.origin).href;
+  const u = 'https://82.156.188.131/english/api/app/apk';
   location.href = 'appup://install?u=' + encodeURIComponent(u);
 }
 if (isInApp) {
