@@ -7,8 +7,13 @@ fulltext/
 papers/
 apps/*.apk
 
-# android build project (contains signing keys)
-/mobile/
+# android native project / deps / artifacts / signing keys
+/mobile/android/
+/mobile/node_modules/
+/mobile/dist/
+/mobile/**/keystore.properties
+*.jks
+*.apk
 
 # python
 .venv/

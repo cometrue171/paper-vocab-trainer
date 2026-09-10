@@ -1,0 +1,11 @@
+{
+  "name": "science-english-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor shell for Science English - connects to YOUR OWN server (entered on first launch)",
+  "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1"
+  }
+}

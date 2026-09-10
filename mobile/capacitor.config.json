@@ -1,0 +1,8 @@
+{
+  "appId": "com.science.english",
+  "appName": "Science English",
+  "webDir": "web",
+  "android": {
+    "allowMixedContent": false
+  }
+}

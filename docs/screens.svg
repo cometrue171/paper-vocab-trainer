@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+  <rect width="960" height="560" fill="#f5f7fb"/>
+  <text x="30" y="42" font-size="20" font-weight="700" fill="#155c43">Science English</text>
+  <text x="30" y="64" font-size="13" fill="#6b7a8c">study screen · word list · papers · progress (mobile-first)</text>
+
+  <!-- phone 1: recitation -->
+  <g transform="translate(30,90)">
+    <rect width="210" height="430" rx="20" fill="#fff" stroke="#e3e8f0"/>
+    <rect x="0" y="0" width="210" height="54" rx="20" fill="#fff"/>
+    <text x="14" y="26" font-size="12" font-weight="700" fill="#155c43">Science English</text>
+    <text x="14" y="42" font-size="10" fill="#6b7a8c">背单词</text>
+    <text x="105" y="130" font-size="30" font-weight="700" text-anchor="middle" fill="#1c2733">eutrophication</text>
+    <rect x="34" y="150" width="68" height="30" rx="15" fill="#fff" stroke="#e3e8f0"/>
+    <text x="68" y="170" font-size="12" text-anchor="middle">🇬🇧 英音</text>
+    <rect x="108" y="150" width="68" height="30" rx="15" fill="#fff" stroke="#e3e8f0"/>
+    <text x="142" y="170" font-size="12" text-anchor="middle">🇺🇸 美音</text>
+    <text x="105" y="212" font-size="12" text-anchor="middle" fill="#7a4fd0">/juːˌtrɒfɪˈkeɪʃn/</text>
+    <text x="105" y="234" font-size="14" text-anchor="middle" fill="#22303f">富营养化</text>
+    <text x="18" y="266" font-size="11" fill="#43536b">"…nutrient runoff accelerates</text>
+    <text x="18" y="282" font-size="11" fill="#43536b">eutrophication of downstream lakes."</text>
+    <text x="18" y="300" font-size="10" fill="#6b7a8c">—— Journal of Cleaner Production</text>
+    <rect x="0" y="366" width="210" height="64" fill="#fff" stroke="#e3e8f0"/>
+    <rect x="14" y="380" width="54" height="34" rx="8" fill="#fff" stroke="#e3e8f0"/>
+    <text x="41" y="401" font-size="11" text-anchor="middle" fill="#c0392b">忘记</text>
+    <rect x="76" y="380" width="54" height="34" rx="8" fill="#fff" stroke="#e3e8f0"/>
+    <text x="103" y="401" font-size="11" text-anchor="middle" fill="#c98a1e">模糊</text>
+    <rect x="138" y="380" width="58" height="34" rx="8" fill="#1e7e5a"/>
+    <text x="167" y="401" font-size="11" text-anchor="middle" fill="#fff">记得</text>
+    <text x="105" y="424" font-size="10" text-anchor="middle" fill="#6b7a8c">3 / 15</text>
+  </g>
+
+  <!-- phone 2: words -->
+  <g transform="translate(260,90)">
+    <rect width="210" height="430" rx="20" fill="#fff" stroke="#e3e8f0"/>
+    <text x="14" y="26" font-size="12" font-weight="700" fill="#155c43">Science English</text>
+    <text x="14" y="42" font-size="10" fill="#6b7a8c">词表</text>
+    <rect x="12" y="56" width="140" height="26" rx="7" fill="#fff" stroke="#e3e8f0"/>
+    <text x="20" y="73" font-size="10" fill="#9aa7b6">搜单词/查词义…</text>
+    <rect x="158" y="56" width="40" height="26" rx="7" fill="#1e7e5a"/>
+    <text x="178" y="73" font-size="10" text-anchor="middle" fill="#fff">查词</text>
+    <rect x="12" y="92" width="62" height="22" rx="11" fill="#1e7e5a"/><text x="43" y="107" font-size="10" text-anchor="middle" fill="#fff">领域核心</text>
+    <rect x="80" y="92" width="56" height="22" rx="11" fill="#fff" stroke="#e3e8f0"/><text x="108" y="107" font-size="10" text-anchor="middle">学术高频</text>
+    <text x="16" y="136" font-size="13" font-weight="600">eutrophication</text>
+    <text x="16" y="152" font-size="10" fill="#3a4a5c">富营养化</text>
+    <text x="16" y="168" font-size="9" fill="#6b7a8c">领域核心 · 学习中 · 文献38次</text>
+    <text x="16" y="200" font-size="13" font-weight="600">anthropogenic</text>
+    <text x="16" y="216" font-size="10" fill="#3a4a5c">人为的</text>
+    <text x="16" y="232" font-size="9" fill="#6b7a8c">领域核心 · 待学 · 文献61次</text>
+    <text x="16" y="264" font-size="13" font-weight="600">bioavailability</text>
+    <text x="16" y="280" font-size="10" fill="#3a4a5c">生物利用率</text>
+    <text x="16" y="296" font-size="9" fill="#6b7a8c">学术高频 · 待学 · 文献12次</text>
+    <text x="16" y="328" font-size="13" font-weight="600">legume</text>
+    <text x="16" y="344" font-size="10" fill="#3a4a5c">豆类</text>
+    <text x="16" y="360" font-size="9" fill="#6b7a8c">领域核心 · 已认识</text>
+    <text x="105" y="400" font-size="10" text-anchor="middle" fill="#6b7a8c">共 3003 词 · 已显示 60</text>
+  </g>
+
+  <!-- phone 3: papers + ai -->
+  <g transform="translate(490,90)">
+    <rect width="210" height="430" rx="20" fill="#fff" stroke="#e3e8f0"/>
+    <text x="14" y="26" font-size="12" font-weight="700" fill="#155c43">Science English</text>
+    <text x="14" y="42" font-size="10" fill="#6b7a8c">文献库 → 自动生成词库</text>
+    <rect x="12" y="56" width="186" height="26" rx="7" fill="#fff" stroke="#e3e8f0"/>
+    <text x="20" y="73" font-size="10" fill="#9aa7b6">研究领域/关键词：磷足迹 生命周期评价</text>
+    <rect x="12" y="88" width="186" height="26" rx="7" fill="#1e7e5a"/>
+    <text x="105" y="105" font-size="10" text-anchor="middle" fill="#fff">🤖 AI 检索并入库</text>
+    <text x="12" y="130" font-size="9" fill="#6b7a8c">🤖 AI 生成检索词：global phosphorus footprint | …</text>
+    <line x1="12" y1="144" x2="198" y2="144" stroke="#e3e8f0"/>
+    <text x="12" y="164" font-size="10" fill="#1c2733">Phosphorus use efficiency and long-term…</text>
+    <text x="12" y="178" font-size="9" fill="#6b7a8c">Canadian Journal of Soil Science · 2011</text>
+    <line x1="12" y1="192" x2="198" y2="192" stroke="#e3e8f0"/>
+    <text x="12" y="212" font-size="10" fill="#1c2733">Reduced meat and dairy consumption…</text>
+    <text x="12" y="226" font-size="9" fill="#6b7a8c">Nature Food · 2026 · ✅全文</text>
+    <line x1="12" y1="240" x2="198" y2="240" stroke="#e3e8f0"/>
+    <text x="12" y="260" font-size="10" fill="#1c2733">The Role of Practicum in TESOL Education…</text>
+    <text x="12" y="274" font-size="9" fill="#6b7a8c">TESOL Quarterly · 2026</text>
+    <rect x="12" y="296" width="88" height="24" rx="6" fill="#fff" stroke="#e3e8f0"/>
+    <text x="56" y="312" font-size="9" text-anchor="middle">标在读</text>
+    <rect x="106" y="296" width="52" height="24" rx="6" fill="#fff" stroke="#e3e8f0"/>
+    <text x="132" y="312" font-size="9" text-anchor="middle" fill="#c0392b">删除</text>
+  </g>
+
+  <!-- phone 4: progress -->
+  <g transform="translate(720,90)">
+    <rect width="210" height="430" rx="20" fill="#fff" stroke="#e3e8f0"/>
+    <text x="14" y="26" font-size="12" font-weight="700" fill="#155c43">Science English</text>
+    <text x="14" y="42" font-size="10" fill="#6b7a8c">学习进度</text>
+    <text x="14" y="72" font-size="11" font-weight="600">第 3 周 · 学习阶段</text>
+    <text x="14" y="90" font-size="9" fill="#6b7a8c">✅ 领域核心 + 学术高频：看懂摘要大意</text>
+    <text x="14" y="106" font-size="9" fill="#6b7a8c">📍 精读论文，语境词累积</text>
+    <text x="14" y="122" font-size="9" fill="#9aa7b6">○ 全文少查词通读</text>
+    <text x="20" y="160" font-size="16" font-weight="700">3003</text><text x="20" y="176" font-size="9" fill="#6b7a8c">词库词条</text>
+    <text x="120" y="160" font-size="16" font-weight="700">128</text><text x="120" y="176" font-size="9" fill="#6b7a8c">已掌握/认识</text>
+    <text x="20" y="212" font-size="16" font-weight="700">9</text><text x="20" y="228" font-size="9" fill="#6b7a8c">连续学习(天)</text>
+    <text x="120" y="212" font-size="16" font-weight="700">6788</text><text x="120" y="228" font-size="9" fill="#6b7a8c">真实例句</text>
+    <text x="14" y="262" font-size="10" fill="#43536b">D0 领域核心 205 · D1 学术 1157 · D2 语境 1641</text>
+    <rect x="14" y="272" width="182" height="8" rx="4" fill="#eef2f7"/>
+    <rect x="14" y="272" width="82" height="8" rx="4" fill="#1e7e5a"/>
+    <text x="14" y="306" font-size="10" fill="#43536b">近 8 周新学词数</text>
+    <rect x="14" y="330" width="16" height="40" fill="#cfe6dc"/><rect x="36" y="318" width="16" height="52" fill="#9fd0ba"/>
+    <rect x="58" y="300" width="16" height="70" fill="#5fb491"/><rect x="80" y="288" width="16" height="82" fill="#1e7e5a"/>
+    <rect x="102" y="310" width="16" height="60" fill="#5fb491"/><rect x="124" y="296" width="16" height="74" fill="#1e7e5a"/>
+    <rect x="146" y="322" width="16" height="48" fill="#9fd0ba"/><rect x="168" y="306" width="16" height="64" fill="#5fb491"/>
+  </g>
+</svg>

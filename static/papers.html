@@ -27,8 +27,12 @@
         <input type="file" id="pdf" accept="application/pdf" style="display:none" onchange="uploadPdf()">
       </label>
       <button class="btn" id="btnFetch" onclick="fetchPapers()">🌐 抓取领域文献</button>
-      <button class="btn" id="btnNf" onclick="fetchNature()">🌾 抓 Nature Food</button>
     </div>
+    <div class="row mt8">
+      <input type="text" id="field" placeholder="填写你的研究领域/关键词，例如：磷足迹 生命周期评价 富营养化" style="flex:1">
+      <button class="btn primary" id="btnAi" onclick="aiFetch()">🤖 AI 检索并入库</button>
+    </div>
+    <div class="note mt8" id="suggest"></div>
     <div class="note mt8" id="msg"></div>
   </div>
   <div class="card mt" style="overflow-x:auto">
@@ -102,6 +106,32 @@ async function uploadPdf() {
   }
   load();
 }
+
+async function aiFetch() {
+  const b = document.getElementById('btnAi');
+  const field = document.getElementById('field').value.trim();
+  if (!field) { msg.textContent = '请先填写研究领域或关键词'; return; }
+  b.disabled = true; b.textContent = 'AI 生成检索词…'; suggest.textContent = '';
+  try {
+    const s1 = await api('/api/papers/suggest', { method: 'POST', body: { field } });
+    suggest.textContent = (s1.ai ? '🤖 AI 生成检索词：' : '检索词：') + s1.terms.join(' | ')
+      + (s1.journals && s1.journals.length ? '   ｜ 推荐期刊：' + s1.journals.join('、') : '');
+    b.textContent = '抓取并分词中…';
+    const j = await api('/api/papers/fetch', { method: 'POST', body: { terms: s1.terms.join('|'), limit: 200 } });
+    msg.textContent = `新增文献 ${j.added_papers} 篇，新增词条行 ${j.words_added}。`;
+    // 若 AI 还给了期刊名，可再抓一轮（去重，不会重复计入）
+    for (const jr of (s1.journals || []).slice(0, 3)) {
+      try {
+        const r2 = await api('/api/papers/fetch', { method: 'POST', body: { source: jr, limit: 80 } });
+        if (r2.added_papers) msg.textContent += ` ｜ ${jr} +${r2.added_papers} 篇`;
+      } catch (e) { /* 期刊名不可识别则跳过 */ }
+    }
+  } catch (e) {
+    msg.textContent = (e.json && e.json.error) ? e.json.error : '抓取失败，请检查设置里的 API Key';
+  } finally { b.disabled = false; b.textContent = '🤖 AI 检索并入库'; }
+  load();
+}
+
 async function fetchPapers() {
   const b = document.getElementById('btnFetch');
   b.disabled = true; b.textContent = '抓取并分词中…';

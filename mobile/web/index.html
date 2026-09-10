@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1e7e5a">
+<title>Science English</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       background:linear-gradient(160deg,#155c43,#0d5139 60%,#082f22);font-family:-apple-system,"PingFang SC",sans-serif;padding:24px}
+  .box{width:100%;max-width:360px;background:#fff;border-radius:16px;padding:26px 22px;box-shadow:0 18px 40px rgba(0,0,0,.28)}
+  h1{font-size:22px;margin:0;color:#155c43;text-align:center}
+  p{color:#6b7a8c;font-size:13px;line-height:1.6}
+  label{font-size:13px;color:#43536b}
+  input{width:100%;box-sizing:border-box;border:1px solid #e3e8f0;border-radius:9px;padding:11px;font-size:16px;margin:6px 0 14px}
+  button{width:100%;min-height:48px;border:0;border-radius:10px;background:#1e7e5a;color:#fff;font-size:16px}
+  .err{color:#c0392b;font-size:13px;min-height:1.2em}
+  code{background:#f2f5f8;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Science English</h1>
+  <p>连接到<b>你自己的</b> Science English 服务地址（本地电脑或自建服务器）。<br>
+     例如 <code>http://192.168.1.10:5010</code> 或 <code>https://your-domain/english/</code></p>
+  <label>服务器地址</label>
+  <input id="url" type="url" inputmode="url" placeholder="http://192.168.1.10:5010" autocomplete="off">
+  <div class="err" id="err"></div>
+  <button onclick="connect()">保存并连接</button>
+  <p style="margin-top:14px">本 App 不含任何预置服务器，也不向第三方发送数据；地址只保存在本机。</p>
+</div>
+<script>
+  document.getElementById('url').value = localStorage.getItem('se_server') || '';
+  function connect() {
+    var u = document.getElementById('url').value.trim();
+    if (!/^https?:\/\//i.test(u)) { document.getElementById('err').textContent = '请以 http:// 或 https:// 开头'; return; }
+    if (u.slice(-1) !== '/') u += '/';
+    localStorage.setItem('se_server', u);
+    location.replace(u);
+  }
+</script>
+</body>
+</html>

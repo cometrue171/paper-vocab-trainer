@@ -45,6 +45,17 @@
     <div class="note mt8">填写后，句子练习页会出现“查看参考译文”按钮。Key 保存在服务器的 SQLite 里。</div>
   </div>
   <div class="card mt">
+    <h2>🤖 AI 检索（可选）</h2>
+    <div class="grid">
+      <div><label class="lab">API Base URL</label><input type="text" id="llm_base_url" placeholder="https://api.openai.com/v1"></div>
+      <div><label class="lab">API Key</label><input type="password" id="llm_api_key" placeholder="sk-…"></div>
+      <div><label class="lab">Model</label><input type="text" id="llm_model" placeholder="gpt-4o-mini"></div>
+    </div>
+    <div class="note mt8">填入任意 OpenAI 兼容接口的 Key 后，「文献库」页的 <b>AI 检索并入库</b> 就能：
+      根据你填写的领域关键词自动生成一组学术检索词（含同义/近义表达）+ 推荐该领域期刊名，然后自动抓取入库。
+      不填 Key 时该按钮退化为“用你填的关键词直接抓取”。Key 只保存在本机数据库。</div>
+  </div>
+  <div class="card mt">
     <h2>文献抓取</h2>
     <label class="lab">OpenAlex 检索词（每行/竖线分隔一个查询）</label>
     <textarea id="seed_terms" rows="4"></textarea>
@@ -75,7 +86,7 @@
 <script src="static/app.js?v=8"></script>
 <script>
 navBar('settings.html');
-const KEYS = ['daily_new', 'review_cap', 'daily_sent', 'port', 'trans_provider', 'trans_key', 'seed_terms', 'min_level'];
+const KEYS = ['daily_new', 'review_cap', 'daily_sent', 'port', 'trans_provider', 'trans_key', 'seed_terms', 'min_level', 'llm_base_url', 'llm_api_key', 'llm_model'];
 async function load() {
   const s = await api('/api/settings');
   for (const k of KEYS) document.getElementById(k).value = s[k] || '';

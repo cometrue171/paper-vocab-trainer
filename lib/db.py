@@ -144,6 +144,9 @@ DEFAULT_SETTINGS = {
     "trans_provider": "",
     "trans_key": "",
     "min_level": "cet4",            # 目标难度档 cet4/cet6/ky
+    "llm_base_url": "https://api.openai.com/v1",
+    "llm_api_key": "",
+    "llm_model": "gpt-4o-mini",
     "seed_terms": "your research topic|another search keyword",
     "oa_download_limit": "40",
 }

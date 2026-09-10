@@ -288,6 +288,62 @@ def create_app() -> Flask:
                             r.json()["choices"][0]["message"]["content"].strip()})
         return jsonify({"error": f"未知翻译源 {provider}"}), 400
 
+
+    # ---------- AI 辅助：按领域关键词生成检索词 ----------
+    SUGGEST_PROMPT = (
+        "You are a research librarian. The user gives a research field and keywords. "
+        "Produce search queries that work well with the OpenAlex `title_and_abstract.search` "
+        "filter for finding *research articles* in that field.\n"
+        "Rules:\n"
+        "- Output 6-10 short queries (2-5 words each), most specific first.\n"
+        "- Prefer standard academic terms over colloquial ones; add close synonyms.\n"
+        "- Also list up to 5 well-known journals in the field (exact names).\n"
+        "- Reply with JSON only: {\"terms\": [...], \"journals\": [...]}"
+    )
+
+    def _llm_chat(cxn, system: str, user: str) -> str:
+        import requests
+        base = get_setting(cxn, acct(), "llm_base_url",
+                           "https://api.openai.com/v1").rstrip("/")
+        key = get_setting(cxn, acct(), "llm_api_key")
+        model = get_setting(cxn, acct(), "llm_model", "gpt-4o-mini") or "gpt-4o-mini"
+        r = requests.post(
+            f"{base}/chat/completions",
+            headers={"Authorization": f"Bearer {key}"},
+            json={"model": model, "temperature": 0.3,
+                  "messages": [{"role": "system", "content": system},
+                               {"role": "user", "content": user}]},
+            timeout=60)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"]
+
+    @app.post("/api/papers/suggest")
+    def api_papers_suggest():
+        """领域关键词 -> 检索词（配置了 LLM key 时用模型生成，否则原样使用关键词）"""
+        cxn = conn()
+        data = request.get_json(force=True) or {}
+        field = (data.get("field") or "").strip()
+        if not field:
+            return jsonify({"error": "请填写研究领域/关键词"}), 400
+        key = get_setting(cxn, acct(), "llm_api_key")
+        if not key:
+            terms = [t.strip() for t in field.replace(",", "|").split("|") if t.strip()]
+            return jsonify({"ok": True, "ai": False, "terms": terms, "journals": []})
+        try:
+            raw = _llm_chat(cxn, SUGGEST_PROMPT, field)
+            import json as _json
+            import re as _re
+            m = _re.search(r"\{.*\}", raw, _re.S)
+            obj = _json.loads(m.group(0)) if m else {}
+            terms = [str(t).strip() for t in obj.get("terms", []) if str(t).strip()][:10]
+            journals = [str(j).strip() for j in obj.get("journals", []) if str(j).strip()][:5]
+            if not terms:
+                terms = [field]
+            return jsonify({"ok": True, "ai": True, "terms": terms,
+                            "journals": journals, "raw": raw[:600]})
+        except Exception as e:  # noqa: BLE001
+            return jsonify({"error": f"AI 生成失败：{e}"}), 502
+
     # ---------- 文献库 ----------
     @app.get("/api/papers")
     def api_papers():
@@ -435,7 +491,7 @@ def create_app() -> Flask:
     # ---------- 设置 ----------
     KEYS = ["daily_new", "daily_sent", "review_cap", "port",
             "trans_provider", "trans_key", "seed_terms", "oa_download_limit",
-            "min_level"]
+            "min_level", "llm_base_url", "llm_api_key", "llm_model"]
 
     @app.get("/api/settings")
     def api_settings():

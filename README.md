@@ -14,10 +14,20 @@ generic word lists.
 Built for graduate students and researchers who must read English literature in a specific
 domain (environmental science, agriculture, food systems, applied linguistics, …).
 
-> 中文简介：把「你研究领域的英文文献」自动变成**带真实例句的词库**，用间隔复习背单词 + 文献句子翻译，
-> 12 周内逐步做到不查词典读文献。多账号、数据隔离、可自建服务器或本地运行。
+<details>
+<summary>中文简介（点击展开）</summary>
+
+把「你研究领域的英文文献」自动变成**带真实例句的词库**：抓取文献 → 分词分层 → 间隔复习背单词 +
+文献句子翻译，逐步做到不查词典读文献。支持本地运行或自己的服务器部署、多账号数据隔离、
+可选用任意 OpenAI 兼容 API 做“关键词 → 检索词”的智能抓取。
+
+</details>
 
 ---
+
+## Screenshots
+
+![Science English screens](docs/screens.svg)
 
 ## Features
 
@@ -72,31 +82,91 @@ applied linguistics and language teaching, and any lab that maintains its own pa
 It is deliberately **self-hostable, offline-first for the dictionary, and dependency-light**,
 so a single lab or a single researcher can run it on a small VPS or a laptop.
 
-## Quick start
+## Install & run
+
+Requirements: **Python 3.12+** and [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`).
+
+### Option A — run locally (no server needed)
 
 ```bash
-git clone https://github.com/cometrue171/paper-vocab-trainer && cd paper-vocab-trainer
-uv run manage.py init          # create DB, download & import ECDICT dictionary (~150MB once)
+git clone https://github.com/cometrue171/paper-vocab-trainer
+cd paper-vocab-trainer
+uv run manage.py init          # create the SQLite DB + import the offline dictionary (~150 MB, once)
 uv run manage.py serve         # http://127.0.0.1:5010
 ```
 
-First run prints a generated **admin password** (or set `SEED_ADMIN_PASSWORD` beforehand).
-Log in, open `/admin.html`, create an account for yourself, pick its direction.
+The first run prints a generated **admin password** (or set `SEED_ADMIN_PASSWORD` first).
+Log in → `/admin.html` → create an account → pick its direction → start learning.
+Your data never leaves the machine.
 
-Then fill the pool:
+### Option B — deploy on your own server
+
+Any small VPS works. The repo ships generic templates in `deploy/`:
 
 ```bash
-uv run manage.py fetch   --account <username>            # OpenAlex metadata + abstracts
-uv run manage.py oa      --account <username>            # optional: open-access full texts
-uv run manage.py extract --account <username>            # tokenise → word pool + example sentences
+# on the server
+sudo useradd -m -s /bin/bash science || true
+sudo -u science -H bash -c '
+  cd ~ && git clone https://github.com/cometrue171/paper-vocab-trainer app && cd app
+  uv sync && uv run manage.py init'
+
+# systemd unit (edit User/WorkingDirectory if you changed them)
+sudo cp deploy/science-english.service /etc/systemd/system/science-english.service
+sudo systemctl daemon-reload && sudo systemctl enable --now science-english
+
+# reverse proxy: copy the snippet into your nginx server block, then
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+`deploy/science-english.service` runs the app on `127.0.0.1:8013`; `deploy/nginx.conf`
+proxies it under `/english/` and raises the upload limit for PDFs. The app keeps its own
+session login, so put it behind HTTPS and you are done. Nothing in the templates points at
+any specific host — fill in your own.
+
+### Option C — Android app
+
+`mobile/` is a small Capacitor shell. **It contains no server address**: on first launch it
+asks for the URL of *your own* instance (`http://<lan-ip>:5010` or `https://your-domain/english/`)
+and remembers it.
+
+```bash
+cd mobile
+npm install
+npx cap add android      # first time only
+bash build.sh            # → android/app/build/outputs/apk/release/app-release.apk
+```
+
+Create your own keystore for release signing (see `mobile/README.md`); never commit it.
+
+## Filling the pool
+
+```bash
+uv run manage.py fetch   --account <username> --limit 200   # OpenAlex metadata + abstracts
+uv run manage.py oa      --account <username>               # optional: open-access full texts
+uv run manage.py extract --account <username>               # tokenise → word pool + example sentences
 uv run manage.py status  --account <username>
 ```
 
-Fetch a specific journal by name/ISSN (useful for domain corpora):
+Fetch a specific journal by name or ISSN (useful for domain corpora):
 
 ```bash
 uv run manage.py fetch --account <username> --source "Nature Food" --limit 150
 ```
+
+### Smart harvesting with an LLM (optional)
+
+Settings → **AI 检索**: paste any OpenAI-compatible `base URL` + `API key` (+ model). Then in
+**文献库**, type your research field (e.g. *“phosphorus footprint, life-cycle assessment,
+eutrophication”*) and press **🤖 AI 检索并入库**. The model turns it into 6–10 academic search
+queries plus recommended journals, which are fetched, tokenised and added to your pool
+automatically. Without a key, the button simply uses your keywords as-is — no other feature
+depends on an API key.
+
+### Difficulty target
+
+Per account: treat “CET-4 and below” / “CET-6 and below” / “postgraduate-entrance and below”
+as already known, so the queue only surfaces harder words (Settings → 目标词汇难度; re-screen an
+existing pool with `manage.py level --account <user> --level cet6`).
 
 ## How it works
 
@@ -126,19 +196,12 @@ harvest keywords. Ships with two examples — phosphorus/environment and English
 and you can add your own by dropping a `data/seed_<domain>.tsv` (`word<TAB>中文释义`) and extending
 `lib/directions.py`.
 
-## Deployment
-
-`deploy/` contains generic templates: a `systemd` unit and an nginx reverse-proxy snippet
-(placeholders only — adjust paths, user and port). Deploy behind HTTPS and keep the
-application's own login as the access control.
-
 ## Roadmap
 
 - [ ] Web UI to import a paper by DOI (today: `manage.py` or the admin API)
 - [ ] Optional PDF text layers for paywalled papers uploaded by the user
 - [ ] Seed lists for more domains (contributions welcome — see `data/seed_*.tsv`)
 - [ ] Export/import the word pool (Anki-compatible)
-- [ ] Android wrapper build instructions
 
 ## License
 
