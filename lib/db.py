@@ -116,7 +116,9 @@ CREATE TABLE IF NOT EXISTS dict (
     word        TEXT PRIMARY KEY COLLATE NOCASE,
     phonetic    TEXT NOT NULL DEFAULT '',
     translation_zh TEXT NOT NULL DEFAULT '',
-    tag         TEXT NOT NULL DEFAULT ''
+    tag         TEXT NOT NULL DEFAULT '',
+    pos         TEXT NOT NULL DEFAULT '',
+    definition  TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS ipa (
@@ -144,10 +146,7 @@ DEFAULT_SETTINGS = {
     "trans_provider": "",
     "trans_key": "",
     "min_level": "cet4",            # 目标难度档 cet4/cet6/ky
-    "llm_base_url": "https://api.openai.com/v1",
-    "llm_api_key": "",
-    "llm_model": "gpt-4o-mini",
-    "seed_terms": "your research topic|another search keyword",
+    "seed_terms": "global phosphorus footprint|phosphorus life cycle assessment|anthropogenic phosphorus flows|global phosphorus cycle|phosphorus use efficiency|phosphorus recovery|eutrophication|phosphate rock",
     "oa_download_limit": "40",
 }
 
@@ -166,6 +165,7 @@ def init_db() -> None:
     with connect() as conn:
         conn.executescript(SCHEMA)
         migrate_legacy(conn)
+        ensure_dict_pos(conn)
         create_indexes(conn)
         ensure_seed_admin(conn)
 
@@ -174,6 +174,20 @@ def ensure_columns(conn: sqlite3.Connection) -> None:
     """Compatibility: ensures schema is current for this connection."""
     migrate_legacy(conn)
     create_indexes(conn)
+
+
+def ensure_dict_pos(conn: sqlite3.Connection) -> None:
+    """Older databases predate dict.pos / dict.definition."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(dict)").fetchall()}
+    if not cols:
+        return
+    added = False
+    for col in ("pos", "definition"):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE dict ADD COLUMN {col} TEXT NOT NULL DEFAULT ''")
+            added = True
+    if added:
+        conn.commit()
 
 
 def create_indexes(conn: sqlite3.Connection) -> None:
@@ -243,26 +257,20 @@ def migrate_legacy(conn: sqlite3.Connection) -> None:
 # --------------------------------------------------------------------------- #
 # users
 # --------------------------------------------------------------------------- #
-ADMIN_USERNAME = "admin"
-ADMIN_DIRECTION = "General / 综合"
+ADMIN_USERNAME = "english"
+ADMIN_PASSWORD = "j26U9FTTcUF6"          # 沿用旧 nginx 凭据，作管理员
+ADMIN_DIRECTION = "磷足迹/全生命周期(环境工程)"
+TEACHER_DIRECTION = "英语/英语教学"
 
 
 def ensure_seed_admin(conn: sqlite3.Connection) -> None:
-    """Create the first admin account once. Password comes from
-    SEED_ADMIN_PASSWORD, or is generated and printed to stderr."""
-    if conn.execute("SELECT 1 FROM users WHERE id=1").fetchone():
-        return
-    import secrets
-    import sys
-    pwd = os.environ.get("SEED_ADMIN_PASSWORD") or secrets.token_urlsafe(9)
-    conn.execute(
-        "INSERT INTO users(id,username,password_hash,is_admin,direction,note) "
-        "VALUES(?,?,?,1,?,'系统管理员')",
-        (1, ADMIN_USERNAME, generate_password_hash(pwd), ADMIN_DIRECTION))
-    conn.commit()
-    print(f"[init] 已创建管理员账号「{ADMIN_USERNAME}」，初始密码：{pwd}\n"
-          f"       请登录后在 /admin.html 中修改，或设置 SEED_ADMIN_PASSWORD 环境变量。",
-          file=sys.stderr)
+    if not conn.execute("SELECT 1 FROM users WHERE id=1").fetchone():
+        conn.execute(
+            "INSERT INTO users(id,username,password_hash,is_admin,direction,note) "
+            "VALUES(?,?,?,1,?,'系统管理员（原有账号数据归其所有）')",
+            (1, ADMIN_USERNAME,
+             generate_password_hash(ADMIN_PASSWORD), ADMIN_DIRECTION))
+        conn.commit()
 
 
 def user_row(conn: sqlite3.Connection, username: str | None = None,

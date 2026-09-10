@@ -84,26 +84,39 @@ def import_ecdict(conn: sqlite3.Connection, csv_path: str | None = None) -> int:
     conn.commit()
     n = 0
     with open(path, "r", encoding="utf-8", errors="replace", newline="") as f:
-        reader = csv.DictReader(f, fieldnames=CSV_FIELDS, delimiter=",")
-        # some mirrors emit a header line; skip it
+        reader = csv.reader(f, delimiter=",")
+        header, firstrow = None, None
+        for first in reader:
+            if first and first[0].strip().lower() == "word":
+                header = [c.strip().lower() for c in first]
+                break
+            header, firstrow = CSV_FIELDS, first   # 无表头：按标准顺序
+            break
+
+        def as_row(values):
+            return dict(zip(header, values))
+
         batch = []
-        for row in reader:
+        rows_iter = ([as_row(firstrow)] if firstrow else []) + [as_row(v) for v in reader]
+        for row in rows_iter:
             w = (row.get("word") or "").strip().lower()
             if not w or len(w) > 60:
                 continue
             batch.append((w, (row.get("phonetic") or "")[:60],
                           (row.get("translation") or "")[:2000],
-                          (row.get("tag") or "")[:120]))
+                          (row.get("tag") or "")[:120],
+                          (row.get("pos") or "")[:60],
+                          re.sub(r"\s+", " ", (row.get("definition") or ""))[:600]))
             if len(batch) >= 5000:
                 conn.executemany(
-                    "INSERT OR REPLACE INTO dict(word,phonetic,translation_zh,tag) "
-                    "VALUES(?,?,?,?)", batch)
+                    "INSERT OR REPLACE INTO dict(word,phonetic,translation_zh,tag,pos,definition) "
+                    "VALUES(?,?,?,?,?,?)", batch)
                 batch = []
                 n += 5000
         if batch:
             conn.executemany(
-                "INSERT OR REPLACE INTO dict(word,phonetic,translation_zh,tag) "
-                "VALUES(?,?,?,?)", batch)
+                "INSERT OR REPLACE INTO dict(word,phonetic,translation_zh,tag,pos,definition) "
+                "VALUES(?,?,?,?,?,?)", batch)
             n += len(batch)
     conn.commit()
     return n
@@ -169,6 +182,46 @@ def import_ipa(conn: sqlite3.Connection) -> int:
         n += len(batch)
     conn.commit()
     return n
+
+
+_POS_CN = {"n": "n.", "v": "v.", "vt": "vt.", "vi": "vi.", "adj": "adj.", "adv": "adv.",
+           "prep": "prep.", "pre": "prep.", "conj": "conj.", "pron": "pron.",
+           "num": "num.", "art": "art.", "int": "int.", "aux": "aux.",
+           "abbr": "abbr.", "pl": "pl.", "j": "adj."}
+
+
+def pos_of(conn: sqlite3.Connection, word: str) -> str:
+    """词性：优先 ECDICT 的 pos 字段（如 'n:64/v:36'），否则解析释义文本前缀。"""
+    row = conn.execute("SELECT pos, translation_zh, definition FROM dict WHERE word=?",
+                       (word.lower(),)).fetchone()
+    if not row:
+        return ""
+    if row["pos"]:
+        items = []
+        for chunk in re.split(r"[/,;|]", row["pos"]):
+            code, _, pct = chunk.partition(":")
+            try:
+                w = float(pct or 0)
+            except ValueError:
+                w = 0.0
+            if code.strip():
+                items.append((w, code.strip().lower()))
+        items.sort(reverse=True)
+        out = [_POS_CN[c] for _, c in items[:2] if c in _POS_CN]
+        if out:
+            return " ".join(dict.fromkeys(out))
+    # 文本解析：中文释义、英文释义里出现的 n. / v. / adj. …
+    text = (row["translation_zh"] or "") + " " + (row["definition"] or "")
+    pat = re.compile(r"(?<![a-zA-Z])(n|v|vt|vi|adj|adv|prep|pre|conj|pron|num|art|int|aux|abbr|pl)\.",
+                     re.I)
+    out = []
+    for m in pat.finditer(text):
+        label = _POS_CN.get(m.group(1).lower())
+        if label and label not in out:
+            out.append(label)
+        if len(out) >= 2:
+            break
+    return " ".join(out)
 
 
 def tag_set(row) -> set[str]:

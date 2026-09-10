@@ -7,16 +7,16 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>背单词 · Science English</title>
-<link rel="stylesheet" href="static/app.css?v=8">
+<link rel="stylesheet" href="static/app.css?v=10">
 <style>
-/* 背单词：自然流布局 + 答题栏吸附在底部导航栏上方 */
 .recite{margin:12px auto;padding:0;display:flex;flex-direction:column}
 .face-wrap{flex:1 1 auto;padding:22px 18px 14px}
 .face-front{min-height:38vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
-.wfront{font-size:clamp(36px,9vw,56px);font-weight:700;letter-spacing:.5px;margin:8px 0 18px;word-break:break-word}
+.wfront{font-size:clamp(36px,9vw,56px);font-weight:700;letter-spacing:.5px;margin:8px 0 4px;word-break:break-word}
+.pos{color:#6b7a8c;font-size:14px;font-style:italic;margin-bottom:14px}
 .audio{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.audio .btn{min-width:118px;min-height:46px;font-size:16px}
-.gloss{font-size:17px;line-height:1.7;color:#22303f}
+.audio .btn{min-width:110px;min-height:44px;font-size:15px}
+.gloss{font-size:18px;line-height:1.7;color:#22303f}
 .phono{color:#7a4fd0;font-weight:600;font-size:16px}
 .sentence{margin:10px 0;font-size:16px;line-height:1.8}
 .sentence mark{background:#ffe08a;padding:0 2px;border-radius:3px}
@@ -28,8 +28,7 @@
 .dock .row .btn{flex:1;min-height:50px;font-size:16px}
 .mininav{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted)}
 .mininav button{min-height:34px;padding:4px 12px;font-size:13px;flex:none}
-@media (max-width:760px){ .dock{bottom:66px} }   /* 停在底部导航栏上方 */
-.checktip{font-size:14px;color:#7a5a10;background:#fff6df;border:1px solid #f3ddae;border-radius:8px;padding:8px 12px;margin:10px 0}
+@media (max-width:760px){ .dock{bottom:66px} }
 .err{margin:20px;padding:14px;background:#fdf0ef;border:1px solid #f0c4be;border-radius:10px;color:#a33;font-size:13px}
 .empty{margin:24px auto;text-align:center;color:var(--muted)}
 </style>
@@ -45,134 +44,168 @@
   <div class="card recite" id="done" style="display:none">
     <div class="empty">
       <h2>🌿 本组背完</h2>
-      <p class="muted">新词与到期复习会自动排入后续学习，保持节奏即可。</p>
+      <p class="muted">每个词都过了几遍。新词与到期复习会自动排入后续学习。</p>
       <button class="btn primary" onclick="location.reload()">再来一组</button>
     </div>
   </div>
 </div>
 <nav class="nav bnav"></nav>
-<script src="static/app.js?v=8"></script>
+<script src="static/app.js?v=10"></script>
 <script>
 navBar('index.html');
-let queue = [], pos = 0, cur = 0;
-const answered = new Set();
+const SKEY = 'se_recite_v1';
+let order = [], pos = 0, autoSpeak = true, repeats = 3;
+const seen = new Set();
 
 function showErr(e) {
   const el = document.getElementById('err');
   el.style.display = 'block';
-  el.textContent = '页面出错了：' + (e && (e.message || e)) + '（刷新重试；若仍不行请把这段文字发给维护者）';
+  el.textContent = '页面出错了：' + (e && (e.message || e)) + '（刷新重试；若仍出现问题请反馈）';
 }
+function today() { return new Date().toISOString().slice(0, 10); }
+
+/* 只存必要字段，控制体积 */
+function pack(c) {
+  return { word_id: c.word_id, word: c.word, gloss: c.gloss, phonetic: c.phonetic, pos: c.pos,
+           contexts: (c.contexts || []).slice(0, 2).map(x => ({ sentence: x.sentence, paper_title: x.paper_title })) };
+}
+function saveSession() {
+  try {
+    localStorage.setItem(SKEY, JSON.stringify({
+      date: today(), pos, repeats, order: order.map(pack), seen: [...seen]
+    }));
+  } catch (e) {}
+}
+function restoreSession() {
+  try {
+    const raw = localStorage.getItem(SKEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (s.date !== today() || !s.order || !s.order.length) return false;
+    order = s.order; pos = s.pos || 0; repeats = s.repeats || 3;
+    (s.seen || []).forEach(id => seen.add(id));
+    return true;
+  } catch (e) { return false; }
+}
+function clearSession() { try { localStorage.removeItem(SKEY); } catch (e) {} }
 
 async function start() {
+  const s = await api('/api/summary');
+  autoSpeak = !!s.auto_speak;
+  repeats = Math.max(1, s.repeat_per_session || 3);
+  if (restoreSession() && pos < order.length) {   // 接着上次继续
+    showCard(pos);
+    return;
+  }
+  clearSession();
   const q = await api('/api/queue');
-  queue = q.new.concat(q.due);
-  if (!queue.length) { done.style.display = 'flex'; return; }
+  const base = q.new.concat(q.due);
+  if (!base.length) { done.style.display = 'flex'; return; }
+  buildOrder(base);
+  saveSession();
   showCard(0);
 }
-function card() { return queue[pos]; }
 
-/* 释义+例句正文（显示释义 / 我认识自检 共用） */
+function buildOrder(base) {
+  order = [];
+  for (let r = 0; r < repeats; r++) {
+    const shuffled = base.slice();
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    order = order.concat(shuffled);
+  }
+}
+function card() { return order[pos]; }
+
 function faceHTML(c) {
-  const ctxs = c.contexts.map(x => `
+  const ctxs = (c.contexts || []).map(x => `
     <div class="sentence">${highlight(c.word, x.sentence)}
       <div class="paper">—— ${x.paper_title || '文献'}</div>
     </div>`).join('');
   return `
     <div class="face-wrap">
+      <div class="wfront" style="font-size:clamp(28px,7vw,40px);text-align:left">${c.word}</div>
+      ${c.pos ? `<div class="pos" style="text-align:left;margin:-8px 0 12px">${c.pos}</div>` : ''}
+      <div class="audio" style="justify-content:flex-start;margin-bottom:14px">
+        <button class="btn" onclick="playWord('${c.word}',1)">🇬🇧 英音</button>
+        <button class="btn" onclick="playWord('${c.word}',2)">🇺🇸 美音</button>
+      </div>
       <div class="gloss">
         ${c.phonetic ? `<span class="phono">/${c.phonetic.replace(/^[/]|[/]$/g, '')}/</span>&nbsp; ` : ''}${c.gloss || '<span class="muted">暂无释义</span>'}
       </div>
       ${ctxs}
     </div>`;
 }
-function dockNav(c, extra) {
-  const hasNext = pos < cur && cur < queue.length;
+function perRound() { return Math.max(1, Math.round(order.length / repeats)); }
+function tip() { return `${order.length} 张 · 第 ${Math.min(repeats, Math.floor(pos / perRound()) + 1)}/${repeats} 遍`; }
+function dockNav(extra) {
   return `
     <div class="mininav">
       <button class="btn ghost" ${pos === 0 ? 'disabled style="opacity:.4"' : ''} onclick="back()">← 上一张</button>
-      <span>${pos + 1} / ${queue.length}</span>
-      ${extra.next || '<span></span>'}
+      <span>${pos + 1} / ${order.length}</span>
+      <span class="note">${tip()}</span>
     </div>${extra.body}`;
 }
-
 function showCard(i) {
-  pos = Math.max(0, Math.min(i, queue.length - 1));
-  const c = card();
-  (answered.has(c.word_id) ? renderBack : renderFront)(c);
+  pos = Math.max(0, Math.min(i, order.length - 1));
+  renderFront(card());
+  saveSession();
 }
-
 function renderFront(c) {
   cardBox.innerHTML = `
     <div class="face-wrap face-front">
       <div class="wfront">${c.word}</div>
-      <div class="audio">
-        <button class="btn" onclick="playWord('${c.word}',1)">🇬🇧 英音</button>
-        <button class="btn" onclick="playWord('${c.word}',2)">🇺🇸 美音</button>
-      </div>
+      ${c.pos ? `<div class="pos">${c.pos}</div>` : ''}
     </div>
-    <div class="dock">${dockNav(c, { body: `
+    <div class="dock">${dockNav({ body: `
       <div class="row">
-        <button class="btn" onclick="reveal()">显示释义</button>
-        <button class="btn primary" onclick="check()">我认识 · 自检</button>
+        <button class="btn danger" onclick="answer('unknown')">不认识</button>
+        <button class="btn primary" onclick="answer('know')">认识</button>
       </div>` })}
     </div>`;
 }
-
-function reveal() { renderBack(card()); }
-function renderBack(c) {
-  cardBox.innerHTML = faceHTML(c) + `
-    <div class="dock">${dockNav(c, { body: `
-      <div class="row">
-        <button class="btn danger" onclick="grade(0)">忘记</button>
-        <button class="btn amber" onclick="grade(1)">模糊</button>
-        <button class="btn primary" onclick="grade(2)">记得</button>
-      </div>` })}
-    </div>`;
+function answer(choice) {   // 'know' | 'unknown'
+  const c = card();
+  const first = !seen.has(c.word_id);
+  if (first) {
+    seen.add(c.word_id);
+    // 本组第一次作答才写入复习计划：认识=记得(2)，不认识=忘记(0)
+    api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: choice === 'know' ? 2 : 0 } }).catch(showErr);
+  }
+  if (autoSpeak) playWord(c.word, 2);
+  renderBack(c, first);
 }
-
-/* 我认识：先给出释义，让你核对是否真认识 */
-function check() { renderCheck(card()); }
-function renderCheck(c) {
-  cardBox.innerHTML = faceHTML(c) + `
-    <div class="checktip">对照上面的意思核对一下——你刚才说的“认识”对上了吗？</div>
-    <div class="dock">${dockNav(c, { body: `
-      <div class="row">
-        <button class="btn danger" onclick="confirmKnow(false)">❌ 记错了（重新学）</button>
-        <button class="btn primary" onclick="confirmKnow(true)">✅ 确实认识</button>
-      </div>` })}
-    </div>`;
+/* 释义页：第一次作答后给「记错了」纠错；重复出现的轮次只给「继续」 */
+function renderBack(c, showCorrect) {
+  const body = showCorrect
+    ? `<div class="row">
+         <button class="btn danger" onclick="oops()">记错了</button>
+         <button class="btn primary" onclick="nextCard()">继续 →</button>
+       </div>
+       <div class="note" style="margin-top:6px">如果刚才点错了，点「记错了」按忘记重新安排</div>`
+    : `<div class="row">
+         <button class="btn primary" onclick="nextCard()">继续 →</button>
+       </div>`;
+  cardBox.innerHTML = faceHTML(c) + `<div class="dock">${dockNav({ body })}</div>`;
 }
-
+/* 记错了：覆盖刚才的判定为“忘记”，并让本词在本组重来 */
+function oops() {
+  const c = card();
+  api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: 0 } }).catch(showErr);
+  // 本词在本组重新排队：把它的剩余重复次数补回队尾
+  const remaining = repeats - countSeen(c.word_id) - 1;
+  for (let k = 0; k < Math.max(0, remaining); k++) order.push(c);
+  saveSession();
+  nextCard();
+}
+function countSeen(id) {
+  return order.slice(0, pos + 1).filter(x => x.word_id === id).length;
+}
+function nextCard() { if (pos + 1 < order.length) { showCard(pos + 1); return; } finish(); }
 function back() { if (pos > 0) showCard(pos - 1); }
-function skipNext() { if (cur < queue.length) showCard(cur); else finish(); }
-
-function firstTime(c) {
-  if (answered.has(c.word_id)) return false;
-  answered.add(c.word_id);
-  cur = Math.max(cur, pos + 1);
-  return true;
-}
-function grade(g) {
-  const c = card();
-  const first = firstTime(c);
-  api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: g } })
-    .then(() => first ? goNext() : goCurrent())
-    .catch(showErr);
-}
-function confirmKnow(ok) {
-  const c = card();
-  const first = firstTime(c);
-  const p = ok
-    ? api('/api/known', { method: 'POST', body: { word_id: c.word_id } })
-    : api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: 0 } });
-  p.then(() => first ? goNext() : goCurrent()).catch(showErr);
-}
-function goCurrent() { if (cur < queue.length) showCard(cur); else finish(); }
-function goNext() {
-  if (pos + 1 < queue.length && pos + 1 >= cur) { showCard(pos + 1); return; }
-  goCurrent();
-}
-function finish() { cardBox.innerHTML = ''; done.style.display = 'flex'; }
+function finish() { clearSession(); cardBox.innerHTML = ''; done.style.display = 'flex'; }
 start().catch(showErr);
 </script>
 </body>
