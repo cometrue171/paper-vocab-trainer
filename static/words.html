@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1e7e5a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>词表 · Science English</title>
+<link rel="stylesheet" href="static/app.css?v=8">
+<style>
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:7px 13px;font-size:13px;cursor:pointer;color:var(--ink)}
+.chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.wrow{border-bottom:1px solid var(--line);padding:10px 2px}
+.wrow .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.wrow .word{font-size:17px;font-weight:600}
+.wrow .gloss{font-size:13px;color:#3a4a5c;margin-top:3px;line-height:1.5}
+.wrow .meta{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px}
+.st{display:inline-block;padding:1px 8px;border-radius:99px;background:#eef2f7;color:#43536b}
+.st.m{background:#e2f0ea;color:#155c43}
+.st.k{background:#fff3d6;color:#8a6110}
+.mini{font-size:12px;padding:3px 9px;min-height:28px;border-radius:7px;cursor:pointer}
+.foot{text-align:center;margin:14px 0}
+.lookup{border:1px solid #cdbfe8;background:#f7f4fb;border-radius:10px;padding:10px 14px;display:none;margin:8px 0}
+.fnum{color:var(--muted);font-size:13px;margin:4px 2px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Science English<small>词表</small></div>
+  <nav class="nav"></nav>
+</div>
+<div class="wrap">
+  <div class="card">
+    <div class="row">
+      <input type="search" id="q" placeholder="搜单词/查词义…" style="flex:1" oninput="onInput()">
+      <button class="btn primary" onclick="searchExact()">查词</button>
+    </div>
+    <div class="lookup" id="lookup"></div>
+    <div class="chips" id="tierChips"></div>
+    <div class="chips" id="stChips"></div>
+    <div class="fnum" id="fnum"></div>
+  </div>
+  <div id="list"></div>
+  <div class="foot"><button class="btn" id="more" onclick="more()">加载更多</button></div>
+</div>
+<nav class="nav bnav"></nav>
+<script src="static/app.js?v=8"></script>
+<script>
+navBar('words.html');
+const F = { q: '', tier: '', status: '', sort: 'freq', page: 1, per: 60, total: 0, rows: [] };
+const TIERS = [['', '全部层级'], ['D0', '领域核心'], ['D1', '学术高频'], ['D2', '文献语境']];
+const STATUS = [['', '全部状态'], ['todo', '待学'], ['learning', '学习中'], ['mastered', '已掌握'], ['known', '已认识']];
+
+function buildChips(el, items, val, cb) {
+  el.innerHTML = items.map(([v, t]) =>
+    `<button class="chip ${v === val ? 'on' : ''}" data-v="${v}">${t}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(c => c.onclick = () => cb(c.dataset.v));
+}
+buildChips(document.getElementById('tierChips'), TIERS, F.tier, v => { F.tier = v; reload(); });
+buildChips(document.getElementById('stChips'), STATUS, F.status, v => { F.status = v; reload(); });
+
+function statusTag(w) {
+  if (w.known) return '<span class="st k">已认识</span>';
+  const map = { todo: '待学', learning: '学习中', mastered: '已掌握' };
+  return `<span class="st ${w.status === 'mastered' ? 'm' : ''}">${map[w.status] || w.status}</span>`;
+}
+function tierTag(t) {
+  const map = { D0: '领域核心', D1: '学术高频', D2: '文献语境' };
+  return `<span class="st">${map[t] || t}</span>`;
+}
+
+let deb = null;
+function onInput() {
+  clearTimeout(deb);
+  deb = setTimeout(() => { F.q = q.value.trim(); reload(); }, 350);
+}
+async function searchExact() {
+  const w = q.value.trim();
+  const box = document.getElementById('lookup');
+  if (!w) { box.style.display = 'none'; return; }
+  try {
+    const r = await api('/api/search?q=' + encodeURIComponent(w));
+    if (!r.found) { box.innerHTML = '词库与词典都没收录这个词。'; box.style.display = 'block'; return; }
+    box.innerHTML = `<b style="font-size:16px">${r.word}</b>
+      ${r.phonetic ? ` <span class="phono">/${r.phonetic.replace(/^[/]|[/]$/g, '')}/</span>` : ''}
+      <a class="voice" href="javascript:void(0)" onclick="playWord('${r.word}',2)">🔊</a>
+      <div class="gloss" style="margin-top:4px">${r.gloss}</div>
+      ${r.in_pool && r.contexts && r.contexts[0] ? `<div class="sentence" style="margin-top:6px">${highlight(r.word, r.contexts[0].sentence)}</div>` : '<div class="note mt8">词典词，词库尚未收录（可在文献库抓取扩充）</div>'}`;
+    box.style.display = 'block';
+  } catch (e) { box.innerHTML = '查词失败'; box.style.display = 'block'; }
+}
+
+function render() {
+  const wrap = document.getElementById('list');
+  wrap.innerHTML = F.rows.map(w => `
+    <div class="wrow">
+      <div class="top">
+        <span class="word">${w.word}</span>
+        <a class="voice" href="javascript:void(0)" onclick="playWord('${w.word}',2)">🔊</a>
+        ${w.phonetic ? `<span class="phono" style="font-size:12px">/${w.phonetic.replace(/^[/]|[/]$/g, '')}/</span>` : ''}
+      </div>
+      <div class="gloss">${w.gloss_zh || '<span class="muted">暂无释义</span>'}</div>
+      <div class="meta">${tierTag(w.tier)} ${statusTag(w)}
+        <span class="muted">文献${w.n_papers}次·${w.freq}频</span>
+        <button class="btn mini ${w.known ? '' : 'primary'}" style="margin-left:auto" onclick="toggleKnown(${w.id}, ${w.known ? 0 : 1})">${w.known ? '取消认识' : '标记认识'}</button>
+      </div>
+    </div>`).join('');
+  const moreB = document.getElementById('more');
+  moreB.style.display = F.rows.length >= F.total ? 'none' : 'inline-block';
+  document.getElementById('fnum').textContent = `共 ${F.total} 词 · 已显示 ${F.rows.length}`;
+}
+
+async function load() {
+  const j = await api('/api/words?' + new URLSearchParams({
+    q: F.q, tier: F.tier, status: F.status, sort: F.sort, page: F.page, per: F.per
+  }).toString());
+  F.total = j.total;
+  F.rows = F.page === 1 ? j.words : F.rows.concat(j.words);
+  render();
+}
+async function reload() { F.page = 1; await load(); }
+function more() { F.page += 1; load(); }
+
+async function toggleKnown(id, known) {
+  await api('/api/words/known', { method: 'POST', body: { word_id: id, known } });
+  reload();
+}
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1e7e5a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>文献库 · Science English</title>
+<link rel="stylesheet" href="static/app.css?v=8">
+<style>
+.mask{position:fixed;inset:0;background:rgba(20,30,40,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+.dialog{max-width:360px;width:100%}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">Science English<small>文献库 → 自动生成词库</small></div>
+  <nav class="nav"></nav>
+</div>
+<div class="wrap">
+  <div class="card">
+    <div class="row">
+      <input type="search" id="q" placeholder="搜标题…" style="max-width:280px">
+      <button class="btn" onclick="search()">搜索</button>
+      <label class="btn primary right" style="cursor:pointer">📄 导入PDF
+        <input type="file" id="pdf" accept="application/pdf" style="display:none" onchange="uploadPdf()">
+      </label>
+      <button class="btn" id="btnFetch" onclick="fetchPapers()">🌐 抓取领域文献</button>
+      <button class="btn" id="btnNf" onclick="fetchNature()">🌾 抓 Nature Food</button>
+    </div>
+    <div class="note mt8" id="msg"></div>
+  </div>
+  <div class="card mt" style="overflow-x:auto">
+    <table>
+      <thead><tr><th>标题 / 出处</th><th>年份</th><th>词例句</th><th>全文</th><th class="tg">操作</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+<nav class="nav bnav"></nav>
+<div class="mask" id="mask" style="display:none">
+  <div class="card dialog">
+    <h3>⚠️ 删除这篇文献？</h3>
+    <p class="note" id="delInfo"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn" onclick="cancelDel()">取消</button>
+      <button class="btn danger" onclick="doDelete()">确定删除</button>
+    </div>
+  </div>
+</div>
+<script src="static/app.js?v=8"></script>
+<script>
+navBar('papers.html');
+async function load() {
+  const q = document.getElementById('q').value.trim();
+  const j = await api('/api/papers' + (q ? '?q=' + encodeURIComponent(q) : ''));
+  rows.innerHTML = j.papers.length ? j.papers.map(p => `
+    <tr>
+      <td>${p.title || '(无标题)'}<div class="note">${p.source || p.doi || ''}</div></td>
+      <td>${p.year || '—'}</td>
+      <td>${p.ctx_count}</td>
+      <td>${p.has_fulltext ? '✅全文' : (p.oa ? '<span class="note">OA摘要</span>' : '<span class="note">摘要</span>')}</td>
+      <td class="tg">
+        <button class="btn" style="padding:3px 8px" onclick="toggleReading(${p.id}, ${p.is_reading})">${p.is_reading ? '在读★' : '标在读'}</button>
+        <button class="btn danger" style="padding:3px 8px" onclick="askDelete(${p.id}, '${(p.title || '这篇文献').replace(/'/g, '')}')">删除</button>
+      </td>
+    </tr>`).join('') : '<tr><td colspan="5" class="muted">还没有文献。抓取或导入 PDF 即可开始。</td></tr>';
+}
+function toggleReading(id, cur) {
+  api('/api/papers/reading', { method: 'POST', body: { id, is_reading: !cur } }).then(load);
+}
+let delId = null;
+function askDelete(id, title) {
+  delId = id;
+  document.getElementById('delInfo').textContent =
+    `《${title}》将被删除，连同它贡献的全部例句及（网页导入的）PDF 文件。此操作不可撤销。`;
+  document.getElementById('mask').style.display = 'flex';
+}
+function cancelDel() { delId = null; document.getElementById('mask').style.display = 'none'; }
+async function doDelete() {
+  await api('/api/papers/delete', { method: 'POST', body: { id: delId } });
+  msg.textContent = '已删除';
+  cancelDel();
+  load();
+}
+async function uploadPdf() {
+  const f = document.getElementById('pdf').files[0];
+  if (!f) return;
+  if (f.size > 100 * 1024 * 1024) {
+    msg.textContent = '文件过大（超过 100MB）：请拆分或压缩后上传，或用文本粘贴导入。';
+    return;
+  }
+  const fd = new FormData(); fd.append('file', f);
+  msg.textContent = '解析中（大文件可能稍慢）…';
+  try {
+    const r = await fetch(href('/api/papers/import'), { method: 'POST', body: fd });
+    const j = await r.json();
+    msg.textContent = j.ok ? `已导入「${f.name}」，新增词条行 ${j.words_added}` : (j.error || '导入失败');
+  } catch (e) {
+    msg.textContent = '导入失败：文件可能过大或格式不支持（请用 ≤100MB 的 PDF）。';
+  }
+  load();
+}
+async function fetchPapers() {
+  const b = document.getElementById('btnFetch');
+  b.disabled = true; b.textContent = '抓取并分词中…';
+  try {
+    const j = await api('/api/papers/fetch', { method: 'POST', body: {} });
+    msg.textContent = `新增文献 ${j.added_papers} 篇，新增词条行 ${j.words_added}。可在“背单词”开始背诵。`;
+  } finally { b.disabled = false; b.textContent = '🌐 抓取领域文献'; }
+  load();
+}
+async function fetchNature() {
+  const b = document.getElementById('btnNf');
+  b.disabled = true; b.textContent = '抓取中…';
+  try {
+    const j = await api('/api/papers/fetch', { method: 'POST', body: { source: 'Nature Food', limit: 150 } });
+    msg.textContent = `${j.where}：新增文献 ${j.added_papers} 篇，新增词条行 ${j.words_added}。`;
+  } finally { b.disabled = false; b.textContent = '🌾 抓 Nature Food'; }
+  load();
+}
+load();
+</script>
+</body>
+</html>

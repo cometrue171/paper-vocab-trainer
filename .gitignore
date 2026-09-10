@@ -1,0 +1,20 @@
+# local data / downloaded corpora (never commit)
+data/lit.db*
+data/backups/
+data/ecdict.csv
+data/ipa_en_US.txt
+fulltext/
+papers/
+apps/*.apk
+
+# android build project (contains signing keys)
+/mobile/
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# misc
+.DS_Store

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1e7e5a">
+<title>账号管理 · Science English</title>
+<link rel="stylesheet" href="static/app.css?v=8">
+<style>
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.tg{white-space:nowrap}
+.dir select,input{width:100%}
+</style>
+</head>
+<body>
+<div class="wrap" style="max-width:760px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:16px 0">
+    <h2 style="margin:0">账号管理（后台）</h2>
+    <button class="btn" onclick="logout()">退出登录</button>
+  </div>
+  <div class="note">普通用户请回 <a href="index.html">Science English</a> 首页。</div>
+
+  <div class="card mt">
+    <h2>＋ 新增账号（不接受注册，只能这里添加）</h2>
+    <div class="row">
+      <input type="text" id="nu" placeholder="用户名" style="max-width:150px">
+      <input type="password" id="np" placeholder="初始密码(≥6位)" style="max-width:180px">
+      <select id="nd" style="max-width:220px">
+        <option value="英语/英语教学">英语 / 英语教学</option>
+        <option value="磷足迹/全生命周期(环境工程)">磷足迹/全生命周期（环境工程）</option>
+        <option value="自定义">（其他方向——下方备注填）</option>
+      </select>
+    </div>
+    <div class="row mt8">
+      <input type="text" id="nnote" placeholder="备注/研究方向说明（可选）" style="flex:1">
+      <button class="btn primary" onclick="addUser()">添加账号</button>
+    </div>
+    <div class="note mt8" id="msg" style="color:#c0392b"></div>
+  </div>
+
+  <div class="card mt" style="overflow-x:auto">
+    <h2>账号列表</h2>
+    <table>
+      <thead><tr><th>ID</th><th>用户名</th><th>方向</th><th>角色</th><th>词数</th><th>创建</th><th>操作</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</div>
+<script src="static/app.js?v=8"></script>
+<script>
+async function load() {
+  const d = await api('/api/admin/users');
+  rows.innerHTML = d.users.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td><b>${u.username}</b>${u.note ? `<div class="note">${u.note}</div>` : ''}</td>
+      <td>${u.direction || '—'}</td>
+      <td>${u.is_admin ? '<span class="st m">管理员</span>' : '<span class="st">普通</span>'}</td>
+      <td>${u.word_count}</td>
+      <td>${u.created_at}</td>
+      <td class="tg">
+        ${u.is_admin ? '<span class="note">(管理员不可删)</span>' : `
+        <button class="btn" style="padding:3px 8px" onclick="resetPwd(${u.id})">重置密码</button>
+        <button class="btn danger" style="padding:3px 8px" onclick="delUser(${u.id}, '${u.username}')">删除</button>`}
+      </td>
+    </tr>`).join('');
+}
+function logout() { api('/api/auth/logout', { method: 'POST' }).then(() => location.replace(href('login.html'))); }
+
+async function addUser() {
+  const body = {
+    username: nu.value.trim(), password: np.value,
+    direction: nd.value === '自定义' ? (nnote.value.trim() || '自定义') : nd.value,
+    note: nnote.value.trim()
+  };
+  if (!body.username || body.password.length < 6) { msg.textContent = '用户名不能空，密码至少 6 位'; return; }
+  try { await api('/api/admin/users', { method: 'POST', body }); msg.textContent = ''; nu.value = ''; np.value = ''; nnote.value = ''; load(); }
+  catch (e) { msg.textContent = e.json && e.json.error ? e.json.error : '添加失败'; }
+}
+async function resetPwd(id) {
+  const p = prompt('输入新密码（≥6位）');
+  if (!p || p.length < 6) return;
+  await api('/api/admin/users/reset', { method: 'POST', body: { id, password: p } });
+  alert('已重置');
+}
+async function delUser(id, name) {
+  if (!confirm(`确定删除账号「${name}」？\n将删除它的全部文献/词库/进度，不可恢复！`)) return;
+  await api('/api/admin/users/delete', { method: 'POST', body: { id } });
+  load();
+}
+load();
+</script>
+</body>
+</html>

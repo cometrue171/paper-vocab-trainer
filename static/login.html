@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1e7e5a">
+<title>登录 · Science English</title>
+<link rel="stylesheet" href="static/app.css?v=8">
+<style>
+body{background:linear-gradient(160deg,#155c43,#0d5139 60%,#082f22);min-height:100vh;margin:0;
+     display:flex;align-items:center;justify-content:center;padding:24px}
+.box{width:100%;max-width:340px;background:#fff;border-radius:16px;padding:28px 24px;
+     box-shadow:0 18px 40px rgba(0,0,0,.28)}
+.logo{color:#155c43;font-size:24px;font-weight:700;text-align:center}
+.sub{color:#6b7a8c;font-size:13px;text-align:center;margin:6px 0 20px}
+label{font-size:13px;color:#43536b}
+.err{color:#c0392b;font-size:13px;margin:10px 0;min-height:1em}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">Science English</div>
+  <div class="sub">英语文献阅读学习 · 请登录你的账号</div>
+  <label>用户名</label>
+  <input type="text" id="u" autocomplete="username" style="margin:4px 0 12px" placeholder="username">
+  <label>密码</label>
+  <input type="password" id="p" autocomplete="current-password" style="margin:4px 0 12px" placeholder="password">
+  <div class="err" id="err"></div>
+  <button class="btn primary" id="btn" onclick="doLogin()" style="width:100%;min-height:48px">登 录</button>
+  <p class="note" style="text-align:center;margin-top:14px">账号只能由管理员创建，不接受注册。</p>
+</div>
+<script src="static/app.js?v=8"></script>
+<script>
+// 已登录直接进首页
+fetch(href('/api/auth/me')).then(r => r.json()).then(j => { if (j.ok) location.replace(href('index.html')); }).catch(() => {});
+async function doLogin() {
+  const u = document.getElementById('u').value.trim();
+  const p = document.getElementById('p').value;
+  const btn = document.getElementById('btn');
+  err.textContent = ''; btn.disabled = true;
+  try {
+    const r = await fetch(href('/api/auth/login'), { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p }) });
+    const j = await r.json();
+    if (!r.ok) { err.textContent = j.error || '登录失败'; btn.disabled = false; return; }
+    location.replace(href('index.html'));
+  } catch (e) { err.textContent = '网络错误，请重试'; btn.disabled = false; }
+}
+</script>
+</body>
+</html>

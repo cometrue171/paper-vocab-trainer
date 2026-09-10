@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1e7e5a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>句子翻译 · Science English</title>
+<link rel="stylesheet" href="static/app.css?v=8">
+</head>
+<body>
+<div class="top">
+  <div class="brand">Science English<small>句子翻译练习</small></div>
+  <nav class="nav"></nav>
+</div>
+<div class="wrap">
+  <div id="summary" class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))"></div>
+  <div id="list" class="card mt"></div>
+</div>
+<nav class="nav bnav"></nav>
+<script src="static/app.js?v=8"></script>
+<script>
+navBar('sentence.html');
+const NS = {};
+
+async function load() {
+  const s = await api('/api/summary');
+  summary.innerHTML = `
+    <div class="kpi"><b>${s.sent_left}</b><span>今日可翻句子(剩余)</span></div>
+    <div class="kpi"><b>${s.log.sent_done}</b><span>已完成</span></div>`;
+  const d = await api('/api/sentences/today');
+  NS.tasks = d.tasks;
+  render();
+}
+
+function render() {
+  const el = list;
+  if (!NS.tasks.length) {
+    el.innerHTML = '<p class="muted">暂无翻译任务。先去“背单词”，词卡里的真实文献例句会进到这里；也可在文献库多导几篇论文。</p>';
+    return;
+  }
+  el.innerHTML = '<h2>看真实文献句子，自己翻（先想再看词义）</h2>' + NS.tasks.map((t, i) => `
+    <div class="sheet" data-i="${i}">
+      <div class="sentence">${highlight(t.word, t.sentence)}</div>
+      <div class="note">关键词：<b>${t.word}</b> <a class="voice" href="javascript:void(0)" onclick="playWord('${t.word}',2)">🔊</a> ${t.gloss ? '· ' + t.gloss : ''} · 摘自 ${t.paper_title || '文献'}</div>
+      <textarea class="mt8" id="trans-${t.context_id}" placeholder="写下你的中文翻译…"></textarea>
+      <div class="row mt8">
+        <button class="btn primary" onclick="save(${t.context_id}, ${i})">保存我的翻译</button>
+        <button class="btn" onclick="ref(${t.context_id})">查看参考译文</button>
+        <div class="ref note right" id="ref-${t.context_id}"></div>
+      </div>
+    </div>`).join('');
+}
+
+async function save(cid, i) {
+  const v = document.getElementById('trans-' + cid).value.trim();
+  await api('/api/sentences/submit', { method: 'POST', body: { context_id: cid, my_trans: v } });
+  document.querySelector(`[data-i="${i}"]`).classList.add('dim');
+  load();
+}
+async function ref(cid) {
+  const task = NS.tasks.find(t => t.context_id === cid);
+  const box = document.getElementById('ref-' + cid);
+  box.textContent = '翻译中…';
+  try {
+    const j = await api('/api/sentences/translate', { method: 'POST', body: { text: task.sentence } });
+    box.textContent = '参考译文：' + j.translation;
+  } catch (e) {
+    box.textContent = e.json && e.json.error ? e.json.error : '翻译接口错误';
+  }
+}
+load();
+</script>
+</body>
+</html>

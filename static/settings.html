@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1e7e5a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>设置 · Science English</title>
+<link rel="stylesheet" href="static/app.css?v=8">
+</head>
+<body>
+<div class="top">
+  <div class="brand">Science English<small>设置</small></div>
+  <nav class="nav"></nav>
+</div>
+<div class="wrap">
+  <div class="card">
+    <h2>每日学习安排</h2>
+    <div class="grid">
+      <div><label class="lab">每日新词数</label><input type="number" id="daily_new" min="1" max="50"></div>
+      <div><label class="lab">每日复习上限</label><input type="number" id="review_cap" min="10" max="300"></div>
+      <div><label class="lab">每日句子翻译数</label><input type="number" id="daily_sent" min="1" max="10"></div>
+      <div><label class="lab">网页端口(重启生效)</label><input type="number" id="port" min="1000" max="65535"></div>
+    </div>
+    <div class="row mt8" style="align-items:center">
+      <label class="lab" style="flex:none">目标词汇难度：</label>
+      <select id="min_level" style="max-width:300px">
+        <option value="cet4">标准（四级以下跳过，六级/考研/雅思托福学习）</option>
+        <option value="cet6">提升（六级及以下视为已认识，学考研/雅思托福/GRE + 学术词）</option>
+        <option value="ky">高阶（考研及以下视为已认识，只学雅思托福/GRE 及学术词）</option>
+      </select>
+      <span class="note">改完点“保存”。已入库的低档词请由管理员在服务器执行重筛命令后移除。</span>
+    </div>
+  </div>
+  <div class="card mt">
+    <h2>句子参考译文（可选）</h2>
+    <div class="grid">
+      <div><label class="lab">服务</label><select id="trans_provider">
+        <option value="">不使用（自己翻 + 本地词典词义）</option>
+        <option value="deepseek">DeepSeek API</option>
+      </select></div>
+      <div><label class="lab">API Key（只存本机数据库）</label><input type="password" id="trans_key" placeholder="sk-…"></div>
+    </div>
+    <div class="note mt8">填写后，句子练习页会出现“查看参考译文”按钮。Key 保存在服务器的 SQLite 里。</div>
+  </div>
+  <div class="card mt">
+    <h2>文献抓取</h2>
+    <label class="lab">OpenAlex 检索词（每行/竖线分隔一个查询）</label>
+    <textarea id="seed_terms" rows="4"></textarea>
+    <div class="note mt8">每批自动抓取开放获取文献 → 词库。可再加如 “phosphorus metabolism models”“phosphorus big data” 等你研究方向的新关键词。</div>
+  </div>
+  <div class="row mt">
+    <button class="btn primary" onclick="save()">保存</button>
+    <span id="msg" class="note"></span>
+  </div>
+  <div class="card mt">
+    <h2>📱 Android App（在线壳 v1.2）</h2>
+    <p class="note">App 打开后自动登录本系统（已内置访问凭据），无需每次输密码；网页新增功能发布到服务器后 App 自动生效，无需重装。</p>
+    <button class="btn primary" id="dlApp" style="display:none" onclick="installInApp()">📲 在 App 内下载并安装 v1.2</button>
+    <a class="btn primary" id="dlLink" href="api/app/apk">下载安装包 science-english-v1.2.apk</a>
+    <div class="note mt8" id="dlHint">首次安装需在系统设置允许“安装未知应用”，装好后桌面出现「Science English」图标；升级直接覆盖安装即可。</div>
+  </div>
+  <div class="card mt">
+    <h2>命令速查（在服务器上执行）</h2>
+    <table>
+      <tr><td>服务状态</td><td class="mono">sudo systemctl status science-english</td></tr>
+      <tr><td>抓取文献</td><td class="mono">cd /opt/science-english && .venv/bin/python manage.py fetch && sudo .venv/bin/python manage.py extract</td></tr>
+      <tr><td>下载开放全文</td><td class="mono">cd /opt/science-english && .venv/bin/python manage.py oa</td></tr>
+      <tr><td>词库概况</td><td class="mono">cd /opt/science-english && .venv/bin/python manage.py status</td></tr>
+    </table>
+  </div>
+</div>
+<nav class="nav bnav"></nav>
+<script src="static/app.js?v=8"></script>
+<script>
+navBar('settings.html');
+const KEYS = ['daily_new', 'review_cap', 'daily_sent', 'port', 'trans_provider', 'trans_key', 'seed_terms', 'min_level'];
+async function load() {
+  const s = await api('/api/settings');
+  for (const k of KEYS) document.getElementById(k).value = s[k] || '';
+}
+async function save() {
+  const body = {};
+  for (const k of KEYS) body[k] = document.getElementById(k).value.trim();
+  await api('/api/settings', { method: 'POST', body });
+  msg.textContent = '已保存 ✓（端口类设置重启后生效）';
+  setTimeout(() => msg.textContent = '', 2500);
+}
+/* 下载安装：App 内用原生 appup://（自动下载并拉起安装器），浏览器直接走链接 */
+function installInApp() {
+  const u = new URL(href('/api/app/apk'), location.origin).href;
+  location.href = 'appup://install?u=' + encodeURIComponent(u);
+}
+if (isInApp) {
+  dlApp.style.display = 'inline-block';
+  dlLink.style.display = 'none';
+  dlHint.textContent = '将下载 v1.2 并直接拉起安装。首次若提示“安装未知应用”，按提示开启后重试即可。';
+}
+load();
+</script>
+</body>
+</html>

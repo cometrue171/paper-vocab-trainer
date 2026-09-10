@@ -1,0 +1,94 @@
+:root{
+  --bg:#f5f7fb; --card:#fff; --line:#e3e8f0; --ink:#1c2733; --muted:#6b7a8c;
+  --brand:#1e7e5a; --brand2:#155c43; --amber:#c98a1e; --red:#c0392b;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,sans-serif;
+  background:var(--bg);color:var(--ink);line-height:1.6}
+a{color:var(--brand2);text-decoration:none}
+.top{display:flex;align-items:center;gap:22px;background:#fff;border-bottom:1px solid var(--line);
+  padding:12px 26px;position:sticky;top:0;z-index:5}
+.brand{font-weight:700;color:var(--brand2);font-size:17px}
+.brand small{display:block;font-weight:400;color:var(--muted);font-size:11px}
+.nav{display:flex;gap:4px;margin-left:auto}
+.nav a{padding:7px 13px;border-radius:8px;color:var(--ink);font-size:14px}
+.nav a:hover{background:#eef3f8}
+.nav a.on{background:#e2f0ea;color:var(--brand2);font-weight:600}
+.wrap{max-width:880px;margin:22px auto;padding:0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.kpi b{display:block;font-size:22px}
+.kpi span{color:var(--muted);font-size:12px}
+h2{font-size:18px;margin:6px 0 14px}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:12px;background:#eef2f7;color:#43536b;margin-left:8px}
+.pill.d0{background:#fff3d6;color:#8a6110}
+.pill.d1{background:#dcebfe;color:#1f5fa8}
+.btn{border:1px solid var(--line);background:#fff;padding:9px 16px;border-radius:9px;cursor:pointer;
+  font-size:14px;color:var(--ink)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.ghost:hover,.btn:hover{background:#f0f4f9}
+.btn.danger{color:#c0392b}
+.btn.amber{background:var(--amber);border-color:var(--amber);color:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--muted)}
+.mt{margin-top:14px}.mt8{margin-top:8px}.right{margin-left:auto}
+.mono{font-family:ui-monospace,Menlo,monospace}
+
+/* 卡片复习 */
+.wordcard{max-width:640px;margin:18px auto}
+.wfront{font-size:34px;font-weight:700;letter-spacing:.3px;text-align:center;padding:8px 0}
+.sentence{margin:6px 0 12px;font-size:15px}
+.sentence mark{background:#ffe08a;padding:0 2px;border-radius:3px}
+.gloss{font-size:15px;color:#2b3b4c}
+.hint{color:var(--muted);font-size:13px}
+.bar{height:8px;background:#eef2f7;border-radius:99px;overflow:hidden;margin:4px 0}
+.bar i{display:block;height:100%;background:var(--brand)}
+.lab{font-size:13px;color:var(--muted)}
+textarea,input[type=text],input[type=number],input[type=password],select{width:100%;border:1px solid var(--line);
+  border-radius:8px;padding:9px 11px;font-size:14px;font-family:inherit;background:#fff}
+textarea{min-height:96px;resize:vertical}
+.sheet{border-bottom:1px solid var(--line);padding:12px 0}
+.dim{opacity:.45}
+.tierbar{display:flex;gap:18px;margin:10px 0 2px;flex-wrap:wrap}
+.note{font-size:12px;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.tg{white-space:nowrap}
+.phono{color:#7a4fd0;font-weight:600;font-size:15px}
+a.voice{text-decoration:none}
+.btn.voice{min-height:40px;padding:6px 14px;font-size:15px}
+
+/* ---------- 底部导航（手机使用） ---------- */
+.bnav{display:none}
+
+/* ---------- 手机适配：本系统主要在手机上用 ---------- */
+@media (max-width: 760px){
+  body{padding-bottom:86px}
+  .top{padding:10px 14px}
+  .top .nav{display:none}                 /* 顶部导航隐藏 */
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:#fff;
+        border-top:1px solid var(--line);justify-content:space-around;margin:0;
+        padding:4px 2px calc(6px + env(safe-area-inset-bottom));z-index:9}
+  .bnav a{flex:1;text-align:center;font-size:12px;padding:10px 2px;border-radius:10px}
+  .bnav a.on{background:#e2f0ea;color:var(--brand2);font-weight:600}
+  .brand{font-size:16px}
+  .brand small{display:none}
+  .wrap{margin:16px auto 0}
+  .grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .wordcard{margin:16px 0}
+  .wfront{font-size:32px}
+  .btn{min-height:46px;font-size:15px;padding:10px 14px}
+  input,textarea,select{font-size:16px}  /* 防 iOS 点击输入框时自动放大 */
+  h2{font-size:17px}
+  .sentence{font-size:16px}
+  .gloss{font-size:16px}
+  table{font-size:13px}
+  .kpi b{font-size:24px}
+}
+@media (min-width:761px){ .bnav{display:none} }
+
+/* 安全区留白：viewport-fit=cover（App/全屏）时头栏避开状态栏/刘海 */
+.top{padding-top:calc(12px + env(safe-area-inset-top))}
+@media (max-width:760px){
+  .top{padding-top:calc(10px + env(safe-area-inset-top))}
+}

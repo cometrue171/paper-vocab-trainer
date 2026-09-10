@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1e7e5a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>进度 · Science English</title>
+<link rel="stylesheet" href="static/app.css?v=8">
+</head>
+<body>
+<div class="top">
+  <div class="brand">Science English<small>学习进度</small></div>
+  <nav class="nav"></nav>
+</div>
+<div class="wrap">
+  <div class="card">
+    <h2>第 <span id="week">1</span> 周 · 学习阶段</h2>
+    <div id="phases"></div>
+    <div class="note mt8" id="weekNote"></div>
+  </div>
+  <div class="grid mt">
+    <div class="card kpi"><b id="pTotal">0</b><span>词库词条</span></div>
+    <div class="card kpi"><b id="pMastered">0</b><span>已掌握 / 认识</span></div>
+    <div class="card kpi"><b id="pTodo">0</b><span>待学习</span></div>
+    <div class="card kpi"><b id="pStreak">0</b><span>连续学习(天)</span></div>
+  </div>
+  <div class="card mt">
+    <h2>词库构成</h2>
+    <div id="tier"></div>
+  </div>
+  <div class="card mt">
+    <h2>最近学习活动（近 8 周新学词数）</h2>
+    <div id="weekly"></div>
+  </div>
+</div>
+<nav class="nav bnav"></nav>
+<script src="static/app.js?v=8"></script>
+<script>
+navBar('progress.html');
+async function load() {
+  const p = await api('/api/progress');
+  week.textContent = p.phase.week;
+  phases.innerHTML = p.phase.all_phases.map((t, i) =>
+    `<div class="${i < p.phase.phase_index ? 'dim' : ''}">${i + 1 === p.phase.phase_index + 1 ? '📍' : (i < p.phase.phase_index ? '✅' : '○')} ${t}</div>`).join('');
+  weekNote.textContent = p.phase.phase_text;
+  pTotal.textContent = p.words_total;
+  pMastered.textContent = p.by_status.mastered;
+  pTodo.textContent = p.by_status.todo + p.by_status.learning;
+  pStreak.textContent = p.streak;
+
+  const t = p.by_tier;
+  tier.innerHTML = `<div class="row lab">
+      <span>D0 领域核心 ${t.D0}</span><span>D1 学术高频 ${t.D1}</span><span>D2 文献语境 ${t.D2}</span></div>
+    <div class="bar"><i style="width:${p.words_total ? Math.round((t.D0 + t.D1) / p.words_total * 100) : 0}%"></i></div>
+    <div class="note">文献 ${p.papers} 篇 · 真实例句 ${p.contexts} 条 · 今日 新词${p.today.new_done} / 复习${p.today.review_done} / 句子${p.today.sent_done}</div>`;
+  weekly.innerHTML = '<div class="row" style="gap:14px">' + p.activity_weeks.map(w =>
+    `<div style="min-width:52px;text-align:center"><div class="lab">第${w.week}周</div><b>${w.new_done}</b>${bar(w.new_done, 40)}</div>`).join('') + '</div>';
+}
+load();
+</script>
+</body>
+</html>
