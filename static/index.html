@@ -63,7 +63,8 @@ navBar('index.html');
 const SKEY = 'se_recite_v1';
 let order = [], pos = 0, autoSpeak = true, repeats = 3;
 let spellQueue = [], spellWrong = 0, phase = 'read';   // 'read' 读词阶段 → 'spell' 拼写阶段
-const seen = new Set();
+const seen = new Set();   // 本组已写入「认识」的词
+const weak = new Set();   // 本组判为「不认识/记错了」的词：进度已清零，不再被「认识」覆盖
 
 function showErr(e) {
   const el = document.getElementById('err');
@@ -80,7 +81,7 @@ function pack(c) {
 function saveSession() {
   try {
     localStorage.setItem(SKEY, JSON.stringify({
-      date: today(), pos, repeats, phase, seen: [...seen],
+      date: today(), pos, repeats, phase, seen: [...seen], weak: [...weak],
       order: order.map(pack), spell: spellQueue.map(pack), spellWrong
     }));
   } catch (e) {}
@@ -95,6 +96,7 @@ function restoreSession() {
     phase = s.phase || 'read';
     spellQueue = s.spell || []; spellWrong = s.spellWrong || 0;
     (s.seen || []).forEach(id => seen.add(id));
+    (s.weak || []).forEach(id => weak.add(id));
     return true;
   } catch (e) { return false; }
 }
@@ -179,13 +181,25 @@ function renderFront(c) {
 }
 function answer(choice) {   // 'know' | 'unknown'
   const c = card();
-  if (!seen.has(c.word_id)) {
-    seen.add(c.word_id);
-    // 本组第一次作答才写入复习计划：认识=记得(2)，不认识=忘记(0)
-    api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: choice === 'know' ? 2 : 0 } }).catch(showErr);
+  if (choice === 'know') {
+    // 只有本组第一次作答、并且这个词没被判过「不认识」，才写入「记得」
+    if (!seen.has(c.word_id) && !weak.has(c.word_id)) {
+      seen.add(c.word_id);
+      api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: 2 } }).catch(showErr);
+    }
+  } else {
+    resetWord(c);           // 不认识：不管是第几遍，都把学习进度清零
   }
   if (autoSpeak) playWord(c.word, 2);
   renderBack(c, choice === 'know');   // 只有点「认识」才需要纠错入口
+}
+/* 学习进度清零：reps/间隔归零、明天从头再考；本组剩下的遍数里再点「认识」也不会把它覆盖回去 */
+function resetWord(c) {
+  weak.add(c.word_id);
+  seen.add(c.word_id);
+  saveSession();
+  return api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: 0 } })
+    .catch(showErr);
 }
 /* 释义页：点「认识」后才给「记错了」纠错；点「不认识」只给继续 */
 function renderBack(c, showCorrect) {
@@ -197,13 +211,14 @@ function renderBack(c, showCorrect) {
        <div class="note" style="margin-top:6px">刚才点错了？按「记错了」按“忘记”重新安排，本组里还会再出现</div>`
     : `<div class="row">
          <button class="btn primary" onclick="nextCard()">继续 →</button>
-       </div>`;
+       </div>
+       <div class="note" style="margin-top:6px">✅ 已把这个词的学习进度清零，明天从头再考；本组里它还会再出现</div>`;
   cardBox.innerHTML = faceHTML(c) + `<div class="dock">${dockNav({ body })}</div>`;
 }
-/* 记错了：覆盖为“忘记”，并把这个词补回本组队尾重来 */
+/* 记错了：按“忘记”清零，并把这个词补回本组队尾重来 */
 function oops() {
   const c = card();
-  api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: 0 } }).catch(showErr);
+  resetWord(c);
   order.push(c);            // 本组内再练一遍
   saveSession();
   nextCard();

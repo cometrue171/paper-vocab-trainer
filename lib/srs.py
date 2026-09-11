@@ -53,6 +53,8 @@ def apply(conn: sqlite3.Connection, account_id: int, word_id: int,
     interval = row["interval"] if row else 0
     ease = row["ease"] if row else 2.5
     lapses = row["lapses"] if row else 0
+    # 同一个词一天内被反复作答（本组里点了「不认识」后重练）只计一次学习量
+    counted_today = bool(row) and row["last_reviewed"] == today()
 
     if grade == GRADE_AGAIN:
         lapses += 1
@@ -87,8 +89,9 @@ def apply(conn: sqlite3.Connection, account_id: int, word_id: int,
     status = "mastered" if (reps >= 5 and interval >= 21) else "learning"
     conn.execute("UPDATE words SET status=? WHERE id=?", (status, word_id))
 
-    _bump_log(conn, account_id,
-              new_done=int(first_study), review_done=int(not first_study))
+    if not counted_today:
+        _bump_log(conn, account_id,
+                  new_done=int(first_study), review_done=int(not first_study))
     conn.commit()
     return {"due": due, "interval": interval, "ease": ease, "reps": reps,
             "status": status}
