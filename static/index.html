@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>背单词 · Science English</title>
-<link rel="stylesheet" href="static/app.css?v=10">
+<link rel="stylesheet" href="static/app.css?v=11">
 <style>
 .recite{margin:12px auto;padding:0;display:flex;flex-direction:column}
 .face-wrap{flex:1 1 auto;padding:22px 18px 14px}
@@ -30,6 +30,13 @@
 .mininav button{min-height:34px;padding:4px 12px;font-size:13px;flex:none}
 @media (max-width:760px){ .dock{bottom:66px} }
 .err{margin:20px;padding:14px;background:#fdf0ef;border:1px solid #f0c4be;border-radius:10px;color:#a33;font-size:13px}
+.spell-input{font-size:26px;text-align:center;letter-spacing:2px;font-family:ui-monospace,Menlo,monospace;
+             padding:14px;border:2px solid var(--line);border-radius:10px;width:100%;box-sizing:border-box}
+.spell-input.ok{border-color:#1e7e5a;background:#f2faf6}
+.spell-input.bad{border-color:#c0392b;background:#fdf0ef}
+.spell-mean{font-size:22px;text-align:center;margin:6px 0 4px;color:#22303f}
+.spell-phon{text-align:center;color:#7a4fd0;font-size:15px;margin-bottom:14px}
+.spell-res{text-align:center;font-size:15px;min-height:1.4em;margin-top:10px}
 .empty{margin:24px auto;text-align:center;color:var(--muted)}
 </style>
 </head>
@@ -43,18 +50,19 @@
   <div class="card recite" id="cardBox"></div>
   <div class="card recite" id="done" style="display:none">
     <div class="empty">
-      <h2>🌿 本组背完</h2>
-      <p class="muted">每个词都过了几遍。新词与到期复习会自动排入后续学习。</p>
+      <h2>🌿 本组背完（含拼写）</h2>
+      <p class="muted" id="doneInfo">每个词都过了几遍，并完成拼写检查。新词与到期复习会自动排入后续学习。</p>
       <button class="btn primary" onclick="location.reload()">再来一组</button>
     </div>
   </div>
 </div>
 <nav class="nav bnav"></nav>
-<script src="static/app.js?v=10"></script>
+<script src="static/app.js?v=11"></script>
 <script>
 navBar('index.html');
 const SKEY = 'se_recite_v1';
 let order = [], pos = 0, autoSpeak = true, repeats = 3;
+let spellQueue = [], spellWrong = 0, phase = 'read';   // 'read' 读词阶段 → 'spell' 拼写阶段
 const seen = new Set();
 
 function showErr(e) {
@@ -72,7 +80,8 @@ function pack(c) {
 function saveSession() {
   try {
     localStorage.setItem(SKEY, JSON.stringify({
-      date: today(), pos, repeats, order: order.map(pack), seen: [...seen]
+      date: today(), pos, repeats, phase, seen: [...seen],
+      order: order.map(pack), spell: spellQueue.map(pack), spellWrong
     }));
   } catch (e) {}
 }
@@ -83,6 +92,8 @@ function restoreSession() {
     const s = JSON.parse(raw);
     if (s.date !== today() || !s.order || !s.order.length) return false;
     order = s.order; pos = s.pos || 0; repeats = s.repeats || 3;
+    phase = s.phase || 'read';
+    spellQueue = s.spell || []; spellWrong = s.spellWrong || 0;
     (s.seen || []).forEach(id => seen.add(id));
     return true;
   } catch (e) { return false; }
@@ -93,9 +104,9 @@ async function start() {
   const s = await api('/api/summary');
   autoSpeak = !!s.auto_speak;
   repeats = Math.max(1, s.repeat_per_session || 3);
-  if (restoreSession() && pos < order.length) {   // 接着上次继续
-    showCard(pos);
-    return;
+  if (restoreSession()) {                        // 接着上次继续（含拼写阶段）
+    if (phase === 'spell' && spellQueue.length) { startSpelling(); return; }
+    if (pos < order.length) { showCard(pos); return; }
   }
   clearSession();
   const q = await api('/api/queue');
@@ -168,44 +179,120 @@ function renderFront(c) {
 }
 function answer(choice) {   // 'know' | 'unknown'
   const c = card();
-  const first = !seen.has(c.word_id);
-  if (first) {
+  if (!seen.has(c.word_id)) {
     seen.add(c.word_id);
     // 本组第一次作答才写入复习计划：认识=记得(2)，不认识=忘记(0)
     api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: choice === 'know' ? 2 : 0 } }).catch(showErr);
   }
   if (autoSpeak) playWord(c.word, 2);
-  renderBack(c, first);
+  renderBack(c, choice === 'know');   // 只有点「认识」才需要纠错入口
 }
-/* 释义页：第一次作答后给「记错了」纠错；重复出现的轮次只给「继续」 */
+/* 释义页：点「认识」后才给「记错了」纠错；点「不认识」只给继续 */
 function renderBack(c, showCorrect) {
   const body = showCorrect
     ? `<div class="row">
          <button class="btn danger" onclick="oops()">记错了</button>
          <button class="btn primary" onclick="nextCard()">继续 →</button>
        </div>
-       <div class="note" style="margin-top:6px">如果刚才点错了，点「记错了」按忘记重新安排</div>`
+       <div class="note" style="margin-top:6px">刚才点错了？按「记错了」按“忘记”重新安排，本组里还会再出现</div>`
     : `<div class="row">
          <button class="btn primary" onclick="nextCard()">继续 →</button>
        </div>`;
   cardBox.innerHTML = faceHTML(c) + `<div class="dock">${dockNav({ body })}</div>`;
 }
-/* 记错了：覆盖刚才的判定为“忘记”，并让本词在本组重来 */
+/* 记错了：覆盖为“忘记”，并把这个词补回本组队尾重来 */
 function oops() {
   const c = card();
   api('/api/review', { method: 'POST', body: { word_id: c.word_id, grade: 0 } }).catch(showErr);
-  // 本词在本组重新排队：把它的剩余重复次数补回队尾
-  const remaining = repeats - countSeen(c.word_id) - 1;
-  for (let k = 0; k < Math.max(0, remaining); k++) order.push(c);
+  order.push(c);            // 本组内再练一遍
   saveSession();
   nextCard();
 }
 function countSeen(id) {
   return order.slice(0, pos + 1).filter(x => x.word_id === id).length;
 }
-function nextCard() { if (pos + 1 < order.length) { showCard(pos + 1); return; } finish(); }
+function nextCard() {
+  if (pos + 1 < order.length) { showCard(pos + 1); return; }
+  startSpelling();          // 读词阶段走完 → 进入拼写
+}
+
+/* ===== 拼写阶段：看中文释义拼出单词，错词插回队列稍后重拼（不清零） ===== */
+function startSpelling() {
+  phase = 'spell';
+  if (!spellQueue.length) {                     // 首次进入：用本组去重后的词
+    const uniq = [];
+    const got = new Set();
+    order.forEach(c => { if (!got.has(c.word_id)) { got.add(c.word_id); uniq.push(c); } });
+    spellQueue = uniq;
+    spellWrong = 0;
+  }
+  saveSession();
+  if (!spellQueue.length) { finish(); return; }
+  showSpell(0);
+}
+function showSpell(i) {
+  pos = Math.max(0, Math.min(i, spellQueue.length - 1));
+  const c = spellQueue[pos];
+  const ctxs = (c.contexts || []).slice(0, 1).map(x =>
+    `<div class="sentence" style="color:#8a97a6">${'＿'.repeat(Math.max(3, c.word.length))}
+       <div class="paper">${x.paper_title || ''}</div></div>`).join('');
+  cardBox.innerHTML = `
+    <div class="face-wrap face-front" style="justify-content:flex-start;padding-top:28px">
+      <div class="spell-mean">${c.gloss || '（无释义）'}</div>
+      ${c.pos ? `<div class="spell-phon">${c.pos}</div>` : ''}
+      <input class="spell-input" id="sp" autocomplete="off" autocapitalize="off"
+             autocorrect="off" spellcheck="false" placeholder="拼写这个单词…">
+      <div class="spell-res" id="sres"></div>
+      ${ctxs}
+    </div>
+    <div class="dock">${dockNav({ body: `
+      <div class="row">
+        <button class="btn" onclick="playWord('${c.word}',2)">🔊 听发音</button>
+        <button class="btn primary" onclick="checkSpell()">检查</button>
+      </div>
+      <div class="note" style="margin-top:6px">拼错没关系——这个词会稍后重新出现，不扣次数</div>` })}
+    </div>`;
+  const el = document.getElementById('sp');
+  el.focus();
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') checkSpell(); });
+  saveSession();
+}
+function checkSpell() {
+  const c = spellQueue[pos];
+  const el = document.getElementById('sp');
+  const typed = (el.value || '').trim();
+  const ok = typed.toLowerCase() === c.word.toLowerCase();
+  const res = document.getElementById('sres');
+  if (ok) {
+    el.classList.remove('bad'); el.classList.add('ok');
+    res.innerHTML = `✅ 正确：<b>${c.word}</b>`;
+    setTimeout(() => {
+      spellQueue.splice(pos, 1);          // 拼对 → 移出队列
+      if (!spellQueue.length) { finish(); return; }
+      showSpell(Math.min(pos, spellQueue.length - 1));
+    }, 650);
+  } else {
+    el.classList.remove('ok'); el.classList.add('bad');
+    spellWrong += 1;
+    res.innerHTML = `❌ 拼错了，正确是 <b>${c.word}</b>（稍后再拼一次）`;
+    playWord(c.word, 2);
+    // 插回队列尾（间隔几个词），次数不清零
+    const back = Math.min(spellQueue.length, pos + 3);
+    spellQueue.splice(pos, 1);
+    spellQueue.splice(back, 0, c);
+    setTimeout(() => showSpell(Math.min(pos, spellQueue.length - 1)), 1200);
+  }
+}
 function back() { if (pos > 0) showCard(pos - 1); }
-function finish() { clearSession(); cardBox.innerHTML = ''; done.style.display = 'flex'; }
+function finish() {
+  const info = document.getElementById('doneInfo');
+  if (info) info.textContent = spellWrong
+    ? `拼写阶段共拼错 ${spellWrong} 次，错词都已重新拼对。新词与到期复习会自动排入后续学习。`
+    : '拼写全部一次通过 👏 新词与到期复习会自动排入后续学习。';
+  clearSession();
+  cardBox.innerHTML = '';
+  done.style.display = 'flex';
+}
 start().catch(showErr);
 </script>
 </body>
